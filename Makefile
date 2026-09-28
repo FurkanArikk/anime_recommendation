@@ -1,7 +1,7 @@
 # Everything runs in Docker; nothing is installed on the host.
 COMPOSE := docker compose
 DEV     := $(COMPOSE) run --rm dev
-APP     := $(COMPOSE) run --rm api
+APP     := $(COMPOSE) run --rm --build api
 
 .DEFAULT_GOAL := help
 .PHONY: help env build lock up down logs ingest embed index eval pipeline test lint format typecheck check shell
@@ -44,9 +44,9 @@ test: ## Run pytest
 lint: ## Ruff lint + format check
 	$(DEV) ruff check .
 	$(DEV) ruff format --check .
-format: ## Auto-fix lint and format
-	$(DEV) ruff check --fix .
+format: ## Auto-format, then auto-fix lint
 	$(DEV) ruff format .
+	$(DEV) ruff check --fix .
 typecheck: ## mypy
 	$(DEV) mypy src
 check: lint typecheck test ## Everything CI runs

@@ -6,7 +6,8 @@ x-app: &app
   build:
     context: .
     target: runtime
-  image: anime-rec:latest
+  # No shared `image:` tag: api and ui build in parallel and would race on it.
+  # They still share every layer via the BuildKit cache.
   env_file: .env
   volumes:
     - ./data:/app/data # raw CSV in, parquet + embedding cache out (persist across runs)
@@ -41,6 +42,11 @@ services:
       target: dev
     image: anime-rec:dev
     env_file: .env
+    # Run as the host user so files written to the bind mount (uv.lock, caches) aren't root-owned.
+    user: "${UID:-1000}:${GID:-1000}"
+    environment:
+      UV_CACHE_DIR: /tmp/uv-cache
+      HOME: /tmp
     volumes:
       - .:/app # live source; the venv lives in /opt/venv inside the image
     profiles: ["dev"]

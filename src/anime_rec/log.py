@@ -51,4 +51,4 @@ def configure_logging() -> None:
 
 
 def get_logger(name: str | None = None) -> structlog.stdlib.BoundLogger:
-    return structlog.stdlib.get_logger(name)  # type: ignore[no-any-return]
+    return structlog.stdlib.get_logger(name)
