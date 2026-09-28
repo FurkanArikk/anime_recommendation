@@ -57,7 +57,7 @@ class LocalEmbedder(Embedder):
         self.model = model_name
         self.batch_size = batch_size
         self._model = model if model is not None else load_sentence_transformer(model_name, device)
-        self.dim = int(self._model.get_sentence_embedding_dimension())
+        self.dim = int(self._model.get_embedding_dimension())
         if prompts is None:
             prompts = KNOWN_PROMPTS.get(model_name)
             if prompts is None:

@@ -14,7 +14,7 @@ dependencies = [
     "pydantic-settings>=2.4",
     "structlog>=24.4",
     # embeddings + LLM
-    "sentence-transformers>=5.0",
+    "sentence-transformers>=6.0",
     "google-genai>=1.0",
     "tenacity>=9.0",
     # vector store

@@ -21,7 +21,7 @@ class FakeSentenceTransformer:
         self.seen: list[str] = []
         self.kwargs: dict[str, Any] = {}
 
-    def get_sentence_embedding_dimension(self) -> int:
+    def get_embedding_dimension(self) -> int:
         return self.dim
 
     def encode(self, texts: list[str], **kwargs: Any) -> np.ndarray:
