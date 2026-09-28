@@ -70,3 +70,7 @@ disallow_untyped_defs = false
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra"
+filterwarnings = [
+    # Expected: tests use in-memory Qdrant, which ignores payload indexes.
+    "ignore:Payload indexes have no effect in the local Qdrant:UserWarning",
+]

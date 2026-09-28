@@ -32,8 +32,8 @@ ingest: ## Raw CSV -> data/processed/anime.parquet
 	$(APP) anime-rec ingest
 embed: ## Parquet -> cached Gemini embeddings (ARGS="--limit 20" for a trial)
 	$(APP) anime-rec embed $(ARGS)
-index: ## Embeddings -> Qdrant
-	$(APP) anime-rec index
+index: ## Embeddings -> Qdrant (ARGS="--recreate" to rebuild)
+	$(APP) anime-rec index $(ARGS)
 eval: ## Retrieval evaluation report
 	$(APP) anime-rec eval
 pipeline: ingest embed index ## Run all pipeline stages

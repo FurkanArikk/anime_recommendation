@@ -41,6 +41,13 @@ def _embed(args: argparse.Namespace) -> None:
     run_embed(get_settings(), template=args.template, limit=args.limit)
 
 
+def _index(args: argparse.Namespace) -> None:
+    from anime_rec.config import get_settings
+    from anime_rec.vectorstore.indexer import run_index
+
+    run_index(get_settings(), recreate=args.recreate)
+
+
 def _serve(args: argparse.Namespace) -> None:
     import uvicorn
 
@@ -71,9 +78,14 @@ def build_parser() -> argparse.ArgumentParser:
     embed.add_argument("--limit", type=int, help="only embed the top-N ranked anime (trial run)")
     embed.set_defaults(func=_embed)
 
+    index = sub.add_parser("index", help="sync cached vectors into Qdrant (idempotent)")
+    index.add_argument(
+        "--recreate", action="store_true", help="drop and rebuild the collection first"
+    )
+    index.set_defaults(func=_index)
+
     # Stages filled in by later phases.
     for name, help_text, phase in [
-        ("index", "upsert vectors into Qdrant", "phase 4"),
         ("eval", "run retrieval evaluation", "phase 9"),
     ]:
         sub.add_parser(name, help=help_text).set_defaults(func=_not_yet(phase))
