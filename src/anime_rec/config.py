@@ -15,17 +15,25 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
-    # --- Gemini ---
+    # --- Embeddings ---
+    embedding_provider: Literal["local", "gemini"] = "local"
+    document_template: str = "full"  # see embeddings/documents.py TEMPLATES
+
+    # Local (Hugging Face sentence-transformers); dimension comes from the model.
+    local_embedding_model: str = "BAAI/bge-base-en-v1.5"
+    embedding_device: str = "auto"  # auto | cpu | cuda
+    local_batch_size: int = Field(default=64, ge=1)
+
+    # --- Gemini (chat/explanations; optional embedding provider) ---
     gemini_api_key: SecretStr | None = None
-    gemini_embedding_model: str = "gemini-embedding-001"
     gemini_chat_model: str = "gemini-2.5-flash"
-    embedding_dim: int = 768  # Matryoshka sizes supported by gemini-embedding-001
+    gemini_embedding_model: str = "gemini-embedding-001"
+    embedding_dim: int = 768  # Gemini output size (Matryoshka: 768 | 1536 | 3072)
     embedding_batch_size: int = Field(default=50, ge=1, le=100)
     # Client-side throttle in *texts* per minute: the quota counts each text in a batch.
     # Free tier allows 100/min; 90 leaves headroom for query embeddings from the API.
     embedding_texts_per_minute: int = Field(default=90, ge=1)
     embedding_max_retries: int = Field(default=6, ge=0)
-    document_template: str = "full"  # see embeddings/documents.py TEMPLATES
 
     # --- Qdrant ---
     qdrant_url: str = "http://qdrant:6333"

@@ -5,6 +5,7 @@
 data/raw/*
 data/processed/*
 data/cache/*
+data/hf-cache/
 !data/**/.gitkeep
 
 # python

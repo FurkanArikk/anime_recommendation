@@ -1,0 +1,19 @@
+# GPU override for the batch pipeline (embedding). Serving stays on CPU.
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml run --rm pipeline anime-rec embed
+# Requires an NVIDIA driver with CUDA 13 support (>= 580) and Docker GPU support
+# (Docker Desktop + WSL2 provides it out of the box).
+services:
+  pipeline:
+    build:
+      args:
+        TORCH_VARIANT: gpu
+    image: anime-rec:pipeline-gpu # separate tag: never overwrites the CPU image
+    environment:
+      EMBEDDING_DEVICE: cuda # fail loudly instead of silently falling back to CPU
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]

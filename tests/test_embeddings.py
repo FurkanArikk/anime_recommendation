@@ -1,4 +1,4 @@
-"""Embedding client tests with the Gemini SDK replaced by an in-memory fake (no network)."""
+"""Gemini provider + shared caching tests, with the Gemini SDK faked (no network)."""
 
 import hashlib
 import math
@@ -11,16 +11,10 @@ import pytest
 from google.genai import errors
 
 from anime_rec.config import Settings
+from anime_rec.embeddings.base import CacheMissError, TaskType, l2_normalize
 from anime_rec.embeddings.cache import EmbeddingCache, cache_key
-from anime_rec.embeddings.client import (
-    CacheMissError,
-    DailyQuotaExceededError,
-    GeminiEmbedder,
-    TaskType,
-    Throttle,
-    l2_normalize,
-)
 from anime_rec.embeddings.documents import build_documents
+from anime_rec.embeddings.gemini import DailyQuotaExceededError, GeminiEmbedder, Throttle
 from anime_rec.embeddings.pipeline import cached_corpus
 
 DIM = 768

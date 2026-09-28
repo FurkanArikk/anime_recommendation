@@ -44,11 +44,19 @@ def get_client(settings: Settings) -> QdrantClient:
     return QdrantClient(url=settings.qdrant_url, api_key=api_key, timeout=60)
 
 
-def ensure_collection(client: QdrantClient, name: str, dim: int, *, recreate: bool = False) -> None:
+def ensure_collection(
+    client: QdrantClient,
+    name: str,
+    dim: int,
+    *,
+    model: str | None = None,
+    recreate: bool = False,
+) -> None:
     """Create the collection (cosine, `dim`) and payload indexes if missing.
 
-    An existing collection with a different vector config is an error, not something to
-    silently write into: mixing 768-d and 1536-d vectors would corrupt every search.
+    An existing collection built differently is an error, not something to silently write
+    into. A dimension check alone is not enough: two models can both produce 768-d vectors
+    that live in unrelated spaces, so the embedding model recorded on points is checked too.
     """
     if recreate and client.collection_exists(name):
         log.warning("dropping collection for recreate", collection=name)
@@ -63,6 +71,12 @@ def ensure_collection(client: QdrantClient, name: str, dim: int, *, recreate: bo
                 f"collection {name!r} has vectors {params}, expected size={dim} cosine; "
                 "re-run with --recreate"
             )
+        existing = indexed_model(client, name) if model is not None else None
+        if existing is not None and existing != model:
+            raise CollectionMismatchError(
+                f"collection {name!r} holds vectors from {existing!r}, not {model!r}; "
+                "re-run with --recreate"
+            )
     else:
         client.create_collection(
             name, vectors_config=models.VectorParams(size=dim, distance=models.Distance.COSINE)
@@ -72,6 +86,15 @@ def ensure_collection(client: QdrantClient, name: str, dim: int, *, recreate: bo
     # Idempotent: creating an index that already exists is a no-op server-side.
     for field, schema in PAYLOAD_INDEXES.items():
         client.create_payload_index(name, field_name=field, field_schema=schema)
+
+
+def indexed_model(client: QdrantClient, name: str) -> str | None:
+    """Embedding model recorded on an existing point (None for an empty collection)."""
+    records, _ = client.scroll(name, limit=1, with_payload=["embedding_model"])
+    if not records or not records[0].payload:
+        return None
+    value = records[0].payload.get("embedding_model")
+    return str(value) if value is not None else None
 
 
 def _native(value: Any) -> Any:

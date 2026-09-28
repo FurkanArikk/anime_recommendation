@@ -6,6 +6,8 @@ x-app: &app
   build:
     context: .
     target: runtime
+    args:
+      TORCH_VARIANT: cpu # serving embeds one short query at a time: CPU is plenty
   # No shared `image:` tag: api and ui build in parallel and would race on it.
   # They still share every layer via the BuildKit cache.
   env_file: .env
@@ -35,7 +37,14 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
-  # Pipeline stages and dev tooling:  docker compose run --rm dev <command>
+  # Batch stages:  docker compose run --rm pipeline anime-rec <ingest|embed|index|eval>
+  # On the GPU:     add -f docker-compose.gpu.yml   (Makefile: make embed GPU=1)
+  pipeline:
+    <<: *app
+    command: ["anime-rec", "--help"]
+    profiles: ["pipeline"]
+
+  # Tests, lint, type checks:  docker compose run --rm dev <command>
   dev:
     build:
       context: .
@@ -52,7 +61,7 @@ services:
     profiles: ["dev"]
 
   qdrant:
-    image: qdrant/qdrant:v1.15.0
+    image: qdrant/qdrant:v1.19.1
     ports: ["6333:6333", "6334:6334"]
     volumes:
       - qdrant_storage:/qdrant/storage

@@ -36,7 +36,7 @@ def _ingest(_: argparse.Namespace) -> None:
 
 def _embed(args: argparse.Namespace) -> None:
     from anime_rec.config import get_settings
-    from anime_rec.embeddings.client import DailyQuotaExceededError
+    from anime_rec.embeddings.gemini import DailyQuotaExceededError
     from anime_rec.embeddings.pipeline import run_embed
 
     try:

@@ -1,14 +1,13 @@
-"""Gemini embedding client with caching, batching, throttling and retries.
+"""Gemini API embedding provider: throttling, retries and quota handling.
 
-Task types matter: Gemini embeds documents and queries into asymmetric spaces tuned for
-retrieval, so the index uses RETRIEVAL_DOCUMENT and user queries use RETRIEVAL_QUERY.
+Caching and batching come from `Embedder`. Gemini-specific facts (verified against the API):
+batches of at most 100, truncated (non-3072) vectors are not unit length, and the quota
+counts every text in a batch as one request.
 """
 
-import math
 import time
-from collections.abc import Callable, Sequence
-from enum import StrEnum
-from typing import Any, Protocol
+from collections.abc import Callable
+from typing import Any
 
 import httpx
 from google import genai
@@ -22,40 +21,14 @@ from tenacity import (
 )
 
 from anime_rec.config import Settings
-from anime_rec.embeddings.cache import EmbeddingCache, cache_key
+from anime_rec.embeddings.base import Embedder, TaskType, l2_normalize
+from anime_rec.embeddings.cache import EmbeddingCache
 from anime_rec.log import get_logger
 
 log = get_logger(__name__)
 
 MAX_BATCH = 100  # API limit, verified: 101 inputs -> 400 INVALID_ARGUMENT
 RETRYABLE_STATUS = {408, 429, 500, 502, 503, 504}
-
-
-class TaskType(StrEnum):
-    DOCUMENT = "RETRIEVAL_DOCUMENT"
-    QUERY = "RETRIEVAL_QUERY"
-
-
-class Embedder(Protocol):
-    """What the rest of the system depends on; tests substitute a fake."""
-
-    dim: int
-
-    def embed(self, texts: Sequence[str], task_type: TaskType) -> list[list[float]]: ...
-
-    def embed_query(self, text: str) -> list[float]: ...
-
-
-class CacheMissError(RuntimeError):
-    pass
-
-
-def l2_normalize(vector: Sequence[float]) -> list[float]:
-    """Truncated (non-3072) Gemini vectors are not unit length (measured norm ~0.59 at 768)."""
-    norm = math.sqrt(sum(x * x for x in vector))
-    if norm == 0:
-        raise ValueError("cannot normalize a zero vector")
-    return [x / norm for x in vector]
 
 
 class DailyQuotaExceededError(RuntimeError):
@@ -133,7 +106,7 @@ class Throttle:
         self._next_at = now + cost * self._interval
 
 
-class GeminiEmbedder:
+class GeminiEmbedder(Embedder):
     def __init__(
         self,
         settings: Settings,
@@ -146,11 +119,11 @@ class GeminiEmbedder:
             if settings.gemini_api_key is None:
                 raise RuntimeError("GEMINI_API_KEY is not set; add it to .env")
             client = genai.Client(api_key=settings.gemini_api_key.get_secret_value())
+        super().__init__(cache)
         self._client = client
-        self._cache = cache
         self.model = settings.gemini_embedding_model
         self.dim = settings.embedding_dim
-        self._batch_size = min(settings.embedding_batch_size, MAX_BATCH)
+        self.batch_size = min(settings.embedding_batch_size, MAX_BATCH)
         self._throttle = throttle or Throttle(settings.embedding_texts_per_minute)
         backoff = wait_exponential_jitter(initial=2, max=90)
 
@@ -189,56 +162,13 @@ class GeminiEmbedder:
             vectors.append(l2_normalize(e.values))
         return vectors
 
-    def lookup(self, texts: Sequence[str], task_type: TaskType) -> list[list[float] | None]:
-        """Cached vectors in order, None where missing. Never calls the API."""
-        keys = [cache_key(self.model, task_type.value, self.dim, t) for t in texts]
-        found = self._cache.get_many(keys) if self._cache is not None else {}
-        return [found.get(k) for k in keys]
-
-    def embed(
-        self, texts: Sequence[str], task_type: TaskType, *, cache_only: bool = False
-    ) -> list[list[float]]:
-        """Embed texts in order. Cached vectors are reused; only misses hit the API.
-        With `cache_only`, a miss raises instead of calling the API."""
-        keys = [cache_key(self.model, task_type.value, self.dim, t) for t in texts]
-        found = self._cache.get_many(keys) if self._cache is not None else {}
-        # Deduplicate misses: identical texts are embedded once.
-        missing = {k: t for k, t in zip(keys, texts, strict=True) if k not in found}
-
-        if missing and cache_only:
-            raise CacheMissError(
-                f"{len(missing)} of {len(texts)} texts are not in the embedding cache"
-            )
-        if missing:
-            log.info(
-                "embedding",
-                task_type=task_type.value,
-                total=len(texts),
-                cached=len(texts) - len(missing),
-                to_embed=len(missing),
-                batches=math.ceil(len(missing) / self._batch_size),
-            )
-        items = list(missing.items())
-        for start in range(0, len(items), self._batch_size):
-            batch = items[start : start + self._batch_size]
-            try:
-                vectors = self._call([t for _, t in batch], task_type)
-            except errors.APIError as exc:
-                if is_daily_quota(exc):
-                    raise DailyQuotaExceededError(
-                        f"daily embedding quota exhausted after {start} new vectors; "
-                        "progress is cached, rerun the same command after the quota resets"
-                    ) from exc
-                raise
-            new = {k: v for (k, _), v in zip(batch, vectors, strict=True)}
-            if self._cache is not None:
-                # Commit per batch: an interrupted run resumes from here.
-                self._cache.put_many(new, model=self.model, task_type=task_type.value, dim=self.dim)
-            found.update(new)
-            done = min(start + self._batch_size, len(items))
-            if len(items) > self._batch_size:
-                log.info("embedded batch", done=done, total=len(items))
-        return [found[k] for k in keys]
-
-    def embed_query(self, text: str) -> list[float]:
-        return self.embed([text], TaskType.QUERY)[0]
+    def _embed_batch(self, texts: list[str], task_type: TaskType) -> list[list[float]]:
+        try:
+            return self._call(texts, task_type)
+        except errors.APIError as exc:
+            if is_daily_quota(exc):
+                raise DailyQuotaExceededError(
+                    "daily embedding quota exhausted; progress is cached, "
+                    "rerun the same command after the quota resets"
+                ) from exc
+            raise

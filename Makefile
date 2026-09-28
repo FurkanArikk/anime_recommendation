@@ -1,7 +1,9 @@
 # Everything runs in Docker; nothing is installed on the host.
 COMPOSE := docker compose
 DEV     := $(COMPOSE) run --rm dev
-APP     := $(COMPOSE) run --rm --build api
+# Batch stages run in the `pipeline` service; GPU=1 switches it to the CUDA build + GPU.
+PIPELINE_COMPOSE := $(COMPOSE)$(if $(GPU), -f docker-compose.yml -f docker-compose.gpu.yml)
+APP     := $(PIPELINE_COMPOSE) run --rm --build pipeline
 
 .DEFAULT_GOAL := help
 .PHONY: help env build lock up down logs ingest embed index refresh eval pipeline test lint format typecheck check shell
@@ -12,8 +14,9 @@ help: ## Show available targets
 env: ## Create .env from the template (does not overwrite)
 	@test -f .env || (cp .env.example .env && echo "created .env — fill in GEMINI_API_KEY and QDRANT_*")
 
-build: ## Build runtime and dev images
+build: ## Build runtime, pipeline and dev images (GPU=1 builds the CUDA pipeline image)
 	$(COMPOSE) --profile dev build
+	$(PIPELINE_COMPOSE) --profile pipeline build pipeline
 
 lock: ## (Re)generate uv.lock inside the dev container
 	$(DEV) uv lock
@@ -30,7 +33,7 @@ logs: ## Tail service logs
 # --- pipeline stages (each idempotent, runnable independently) ---
 ingest: ## Raw CSV -> data/processed/anime.parquet
 	$(APP) anime-rec ingest
-embed: ## Parquet -> cached Gemini embeddings (ARGS="--limit 20" for a trial)
+embed: ## Parquet -> cached embeddings (GPU=1 for CUDA; ARGS="--limit 20" for a trial)
 	$(APP) anime-rec embed $(ARGS)
 index: ## Embeddings -> Qdrant (ARGS="--recreate" to rebuild)
 	$(APP) anime-rec index $(ARGS)
@@ -38,10 +41,10 @@ eval: ## Retrieval evaluation report
 	$(APP) anime-rec eval
 pipeline: ingest embed index ## Run all pipeline stages
 
-# Free tier: 1,000 embeddings/day shared with app queries. Spend 900 on documents, keep
-# ~100 for searches, then index whatever is embedded. Safe to run repeatedly.
+# Only needed with EMBEDDING_PROVIDER=gemini on the free tier (1,000 embeddings/day shared
+# with app queries): spend 900 on documents, keep ~100 for searches, index what's embedded.
 DAILY_BUDGET ?= 900
-refresh: ## Daily free-tier step: embed next $(DAILY_BUDGET) docs, index the embedded subset
+refresh: ## Gemini free tier: embed next $(DAILY_BUDGET) docs, index the embedded subset
 	-$(APP) anime-rec embed --max-new $(DAILY_BUDGET)
 	$(APP) anime-rec index --partial
 

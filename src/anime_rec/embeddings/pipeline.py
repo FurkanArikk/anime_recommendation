@@ -3,18 +3,18 @@
 The cache *is* this stage's output. The index stage re-derives the same documents and
 reads vectors from the cache only, so indexing can never trigger surprise API calls.
 
-Free-tier note: Gemini allows 1,000 embedded texts per day, shared with query embeddings
-from the running app. `max_new` caps how many new documents one run may embed so the app
-keeps some quota for searches; rows are processed in rank order, so a partially embedded
-corpus is always the top-N anime.
+`max_new` caps how many new documents one run embeds. It exists for the Gemini free tier
+(1,000 texts/day shared with app queries); rows are processed in rank order, so a
+partially embedded corpus is always the top-N anime.
 """
 
 import pandas as pd
 
 from anime_rec.config import Settings
+from anime_rec.embeddings.base import Embedder, TaskType
 from anime_rec.embeddings.cache import EmbeddingCache
-from anime_rec.embeddings.client import GeminiEmbedder, TaskType
 from anime_rec.embeddings.documents import build_documents
+from anime_rec.embeddings.factory import create_embedder
 from anime_rec.ingestion.pipeline import load_processed
 from anime_rec.log import get_logger
 
@@ -23,7 +23,7 @@ log = get_logger(__name__)
 
 def embed_corpus(
     df: pd.DataFrame,
-    embedder: GeminiEmbedder,
+    embedder: Embedder,
     template: str,
     *,
     cache_only: bool = False,
@@ -33,7 +33,7 @@ def embed_corpus(
 
 
 def cached_corpus(
-    df: pd.DataFrame, embedder: GeminiEmbedder, template: str
+    df: pd.DataFrame, embedder: Embedder, template: str
 ) -> tuple[pd.DataFrame, list[list[float]]]:
     """The subset of `df` whose document vectors are already cached, with those vectors."""
     looked_up = embedder.lookup(build_documents(df, template), TaskType.DOCUMENT)
@@ -53,7 +53,7 @@ def run_embed(
         df = df.head(limit)  # sorted by rank, so a trial run embeds the best-known titles
     cache = EmbeddingCache(settings.embedding_cache_path)
     try:
-        embedder = GeminiEmbedder(settings, cache=cache)
+        embedder = create_embedder(settings, cache=cache)
         documents = build_documents(df, template)
         pending = [
             d
@@ -63,6 +63,7 @@ def run_embed(
         todo = pending if max_new is None else pending[:max_new]
         log.info(
             "embed plan",
+            model=embedder.model,
             template=template,
             documents=len(documents),
             already_cached=len(documents) - len(pending),

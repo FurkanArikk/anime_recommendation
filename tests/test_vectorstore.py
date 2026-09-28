@@ -34,9 +34,9 @@ def vectors_for(df: pd.DataFrame) -> list[list[float]]:
     return [list(v / np.linalg.norm(v)) for v in rng.normal(size=(len(df), DIM))]
 
 
-def index(client: QdrantClient, df: pd.DataFrame) -> None:
-    ensure_collection(client, NAME, DIM)
-    upsert_anime(client, NAME, df, vectors_for(df), template="full", model="m")
+def index(client: QdrantClient, df: pd.DataFrame, model: str = "m") -> None:
+    ensure_collection(client, NAME, DIM, model=model)
+    upsert_anime(client, NAME, df, vectors_for(df), template="full", model=model)
 
 
 def test_point_id_is_the_mal_id() -> None:
@@ -107,3 +107,12 @@ def test_upsert_rejects_length_mismatch(client: QdrantClient, clean: pd.DataFram
     ensure_collection(client, NAME, DIM)
     with pytest.raises(ValueError, match="rows but"):
         upsert_anime(client, NAME, clean, vectors_for(clean)[:1], template="full", model="m")
+
+
+def test_same_dimension_different_model_is_refused(
+    client: QdrantClient, clean: pd.DataFrame
+) -> None:
+    index(client, clean, model="gemini-embedding-001")
+    with pytest.raises(CollectionMismatchError, match="holds vectors from"):
+        ensure_collection(client, NAME, DIM, model="BAAI/bge-base-en-v1.5")
+    index(client, clean, model="gemini-embedding-001")  # same model: fine
