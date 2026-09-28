@@ -6,9 +6,9 @@ readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
     # data
-    "pandas>=2.2",
+    "pandas>=2.2,<3",  # pandas 3 changes default string dtype; revisit deliberately
     "pyarrow>=17.0",
-    "pandera>=0.22",
+    "pandera>=0.24",
     # config / validation / logging
     "pydantic>=2.8",
     "pydantic-settings>=2.4",

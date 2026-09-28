@@ -1,11 +1,11 @@
 """Command-line entry point. Each pipeline stage runs independently:
 
-    python -m anime_rec ingest   # raw CSV      -> data/processed/anime.parquet
-    python -m anime_rec embed    # parquet      -> on-disk embedding cache
-    python -m anime_rec index    # cache        -> Qdrant collection (idempotent upsert)
-    python -m anime_rec serve    # FastAPI backend
-    python -m anime_rec ui       # Streamlit chat front end
-    python -m anime_rec eval     # retrieval quality report
+python -m anime_rec ingest   # raw CSV      -> data/processed/anime.parquet
+python -m anime_rec embed    # parquet      -> on-disk embedding cache
+python -m anime_rec index    # cache        -> Qdrant collection (idempotent upsert)
+python -m anime_rec serve    # FastAPI backend
+python -m anime_rec ui       # Streamlit chat front end
+python -m anime_rec eval     # retrieval quality report
 """
 
 import argparse
@@ -25,6 +25,13 @@ def _not_yet(phase: str) -> Callable[[argparse.Namespace], None]:
         sys.exit(1)
 
     return run
+
+
+def _ingest(_: argparse.Namespace) -> None:
+    from anime_rec.config import get_settings
+    from anime_rec.ingestion.pipeline import run_ingest
+
+    run_ingest(get_settings())
 
 
 def _serve(args: argparse.Namespace) -> None:
@@ -50,10 +57,10 @@ def build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
     sub = parser.add_subparsers(dest="command", required=True)
+    sub.add_parser("ingest", help="clean raw CSVs into parquet").set_defaults(func=_ingest)
 
     # Stages filled in by later phases.
     for name, help_text, phase in [
-        ("ingest", "clean raw CSV into parquet", "phase 2"),
         ("embed", "embed documents with Gemini (cached)", "phase 3"),
         ("index", "upsert vectors into Qdrant", "phase 4"),
         ("eval", "run retrieval evaluation", "phase 9"),
