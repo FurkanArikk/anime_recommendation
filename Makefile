@@ -4,7 +4,7 @@ DEV     := $(COMPOSE) run --rm dev
 APP     := $(COMPOSE) run --rm --build api
 
 .DEFAULT_GOAL := help
-.PHONY: help env build lock up down logs ingest embed index eval pipeline test lint format typecheck check shell
+.PHONY: help env build lock up down logs ingest embed index refresh eval pipeline test lint format typecheck check shell
 
 help: ## Show available targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
@@ -37,6 +37,13 @@ index: ## Embeddings -> Qdrant (ARGS="--recreate" to rebuild)
 eval: ## Retrieval evaluation report
 	$(APP) anime-rec eval
 pipeline: ingest embed index ## Run all pipeline stages
+
+# Free tier: 1,000 embeddings/day shared with app queries. Spend 900 on documents, keep
+# ~100 for searches, then index whatever is embedded. Safe to run repeatedly.
+DAILY_BUDGET ?= 900
+refresh: ## Daily free-tier step: embed next $(DAILY_BUDGET) docs, index the embedded subset
+	-$(APP) anime-rec embed --max-new $(DAILY_BUDGET)
+	$(APP) anime-rec index --partial
 
 # --- quality ---
 test: ## Run pytest

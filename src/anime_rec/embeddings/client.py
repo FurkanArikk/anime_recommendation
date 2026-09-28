@@ -189,6 +189,12 @@ class GeminiEmbedder:
             vectors.append(l2_normalize(e.values))
         return vectors
 
+    def lookup(self, texts: Sequence[str], task_type: TaskType) -> list[list[float] | None]:
+        """Cached vectors in order, None where missing. Never calls the API."""
+        keys = [cache_key(self.model, task_type.value, self.dim, t) for t in texts]
+        found = self._cache.get_many(keys) if self._cache is not None else {}
+        return [found.get(k) for k in keys]
+
     def embed(
         self, texts: Sequence[str], task_type: TaskType, *, cache_only: bool = False
     ) -> list[list[float]]:

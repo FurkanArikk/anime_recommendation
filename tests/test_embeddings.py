@@ -6,6 +6,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 
+import pandas as pd
 import pytest
 from google.genai import errors
 
@@ -19,6 +20,8 @@ from anime_rec.embeddings.client import (
     Throttle,
     l2_normalize,
 )
+from anime_rec.embeddings.documents import build_documents
+from anime_rec.embeddings.pipeline import cached_corpus
 
 DIM = 768
 
@@ -225,3 +228,28 @@ def test_throttle_spaces_calls() -> None:
     for _ in range(3):
         throttle.wait()
     assert slept == [1.0, 1.0]
+
+
+def test_lookup_returns_cached_or_none_without_api_calls(
+    settings: Settings, cache: EmbeddingCache
+) -> None:
+    make_embedder(settings, cache, FakeModels()).embed(["a"], TaskType.DOCUMENT)
+    models = FakeModels()
+    found = make_embedder(settings, cache, models).lookup(["a", "b"], TaskType.DOCUMENT)
+    assert found[0] is not None and found[1] is None
+    assert models.calls == []
+
+
+def test_cached_corpus_returns_embedded_subset_in_order(
+    settings: Settings, cache: EmbeddingCache
+) -> None:
+    df = pd.DataFrame(
+        {"anime_id": [1, 2, 3], "title": ["A", "B", "C"], "synopsis": ["x", "y", "z"]}
+    )
+    embedder = make_embedder(settings, cache, FakeModels())
+    docs = build_documents(df, "synopsis_only")
+    embedder.embed([docs[0], docs[2]], TaskType.DOCUMENT)  # anime 2 not embedded yet
+
+    subset, vectors = cached_corpus(df, embedder, "synopsis_only")
+    assert subset["anime_id"].tolist() == [1, 3]
+    assert vectors == embedder.lookup([docs[0], docs[2]], TaskType.DOCUMENT)

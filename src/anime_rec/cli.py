@@ -36,16 +36,22 @@ def _ingest(_: argparse.Namespace) -> None:
 
 def _embed(args: argparse.Namespace) -> None:
     from anime_rec.config import get_settings
+    from anime_rec.embeddings.client import DailyQuotaExceededError
     from anime_rec.embeddings.pipeline import run_embed
 
-    run_embed(get_settings(), template=args.template, limit=args.limit)
+    try:
+        run_embed(get_settings(), template=args.template, limit=args.limit, max_new=args.max_new)
+    except DailyQuotaExceededError as exc:
+        # Expected on the free tier: progress is cached. Distinct exit code for scripts.
+        log.warning("stopped early", reason=str(exc))
+        sys.exit(3)
 
 
 def _index(args: argparse.Namespace) -> None:
     from anime_rec.config import get_settings
     from anime_rec.vectorstore.indexer import run_index
 
-    run_index(get_settings(), recreate=args.recreate)
+    run_index(get_settings(), recreate=args.recreate, partial=args.partial)
 
 
 def _serve(args: argparse.Namespace) -> None:
@@ -76,11 +82,17 @@ def build_parser() -> argparse.ArgumentParser:
     embed = sub.add_parser("embed", help="embed documents with Gemini (cached, resumable)")
     embed.add_argument("--template", help="document template (default: DOCUMENT_TEMPLATE)")
     embed.add_argument("--limit", type=int, help="only embed the top-N ranked anime (trial run)")
+    embed.add_argument(
+        "--max-new", type=int, help="embed at most N uncached documents (daily quota budget)"
+    )
     embed.set_defaults(func=_embed)
 
     index = sub.add_parser("index", help="sync cached vectors into Qdrant (idempotent)")
     index.add_argument(
         "--recreate", action="store_true", help="drop and rebuild the collection first"
+    )
+    index.add_argument(
+        "--partial", action="store_true", help="index only anime whose vectors are cached"
     )
     index.set_defaults(func=_index)
 

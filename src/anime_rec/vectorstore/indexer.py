@@ -1,13 +1,14 @@
 """Index stage: processed parquet + cached vectors -> Qdrant (idempotent sync).
 
-Vectors are read with `cache_only=True`: indexing never calls the embedding API, so it is
-fast, free and repeatable. If anything is missing, run `anime-rec embed` first.
+Vectors are read from the embedding cache only: indexing never calls the embedding API, so
+it is fast, free and repeatable. By default every anime must be embedded; `partial=True`
+indexes just the embedded subset (free-tier daily resume) and still syncs exactly.
 """
 
 from anime_rec.config import Settings
 from anime_rec.embeddings.cache import EmbeddingCache
 from anime_rec.embeddings.client import GeminiEmbedder
-from anime_rec.embeddings.pipeline import embed_corpus
+from anime_rec.embeddings.pipeline import cached_corpus, embed_corpus
 from anime_rec.ingestion.pipeline import load_processed
 from anime_rec.log import get_logger
 from anime_rec.vectorstore.qdrant import (
@@ -21,14 +22,18 @@ from anime_rec.vectorstore.qdrant import (
 log = get_logger(__name__)
 
 
-def run_index(settings: Settings, *, recreate: bool = False) -> None:
+def run_index(settings: Settings, *, recreate: bool = False, partial: bool = False) -> None:
     template = settings.document_template
     df = load_processed(settings)
+    rows_in_dataset = len(df)
 
     cache = EmbeddingCache(settings.embedding_cache_path)
     try:
         embedder = GeminiEmbedder(settings, cache=cache)
-        vectors = embed_corpus(df, embedder, template, cache_only=True)
+        if partial:
+            df, vectors = cached_corpus(df, embedder, template)
+        else:
+            vectors = embed_corpus(df, embedder, template, cache_only=True)
     finally:
         cache.close()
 
@@ -49,5 +54,6 @@ def run_index(settings: Settings, *, recreate: bool = False) -> None:
         upserted=upserted,
         stale_removed=removed,
         points=total,
+        coverage=f"{total}/{rows_in_dataset}",
         template=template,
     )
