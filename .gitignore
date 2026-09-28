@@ -1,0 +1,26 @@
+# secrets
+.env
+
+# data (raw is Kaggle-licensed; processed + cache are reproducible)
+data/raw/*
+data/processed/*
+data/cache/*
+!data/**/.gitkeep
+
+# python
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+*.egg-info/
+dist/
+build/
+
+# editors / OS
+.vscode/
+.idea/
+.DS_Store
