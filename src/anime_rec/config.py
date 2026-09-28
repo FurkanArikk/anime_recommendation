@@ -21,9 +21,11 @@ class Settings(BaseSettings):
     gemini_chat_model: str = "gemini-2.5-flash"
     embedding_dim: int = 768  # Matryoshka sizes supported by gemini-embedding-001
     embedding_batch_size: int = Field(default=50, ge=1, le=100)
-    # Soft client-side throttle; free tier is quota-limited per minute.
-    embedding_requests_per_minute: int = Field(default=60, ge=1)
+    # Client-side throttle in *texts* per minute: the quota counts each text in a batch.
+    # Free tier allows 100/min; 90 leaves headroom for query embeddings from the API.
+    embedding_texts_per_minute: int = Field(default=90, ge=1)
     embedding_max_retries: int = Field(default=6, ge=0)
+    document_template: str = "full"  # see embeddings/documents.py TEMPLATES
 
     # --- Qdrant ---
     qdrant_url: str = "http://qdrant:6333"
@@ -60,6 +62,10 @@ class Settings(BaseSettings):
     @property
     def processed_parquet(self) -> Path:
         return self.processed_dir / "anime.parquet"
+
+    @property
+    def embedding_cache_path(self) -> Path:
+        return self.cache_dir / "embeddings.sqlite"
 
 
 @lru_cache

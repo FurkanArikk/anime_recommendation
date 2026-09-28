@@ -34,6 +34,13 @@ def _ingest(_: argparse.Namespace) -> None:
     run_ingest(get_settings())
 
 
+def _embed(args: argparse.Namespace) -> None:
+    from anime_rec.config import get_settings
+    from anime_rec.embeddings.pipeline import run_embed
+
+    run_embed(get_settings(), template=args.template, limit=args.limit)
+
+
 def _serve(args: argparse.Namespace) -> None:
     import uvicorn
 
@@ -59,9 +66,13 @@ def build_parser() -> argparse.ArgumentParser:
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("ingest", help="clean raw CSVs into parquet").set_defaults(func=_ingest)
 
+    embed = sub.add_parser("embed", help="embed documents with Gemini (cached, resumable)")
+    embed.add_argument("--template", help="document template (default: DOCUMENT_TEMPLATE)")
+    embed.add_argument("--limit", type=int, help="only embed the top-N ranked anime (trial run)")
+    embed.set_defaults(func=_embed)
+
     # Stages filled in by later phases.
     for name, help_text, phase in [
-        ("embed", "embed documents with Gemini (cached)", "phase 3"),
         ("index", "upsert vectors into Qdrant", "phase 4"),
         ("eval", "run retrieval evaluation", "phase 9"),
     ]:

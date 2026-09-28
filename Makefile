@@ -30,8 +30,8 @@ logs: ## Tail service logs
 # --- pipeline stages (each idempotent, runnable independently) ---
 ingest: ## Raw CSV -> data/processed/anime.parquet
 	$(APP) anime-rec ingest
-embed: ## Parquet -> cached Gemini embeddings
-	$(APP) anime-rec embed
+embed: ## Parquet -> cached Gemini embeddings (ARGS="--limit 20" for a trial)
+	$(APP) anime-rec embed $(ARGS)
 index: ## Embeddings -> Qdrant
 	$(APP) anime-rec index
 eval: ## Retrieval evaluation report
