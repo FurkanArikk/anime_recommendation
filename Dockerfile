@@ -16,6 +16,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     HF_HOME=/app/data/hf-cache
 WORKDIR /app
 ARG TORCH_VARIANT=cpu
+# GPU only: Triton JIT-compiles a small C driver shim at first use (torch routes some ops,
+# e.g. in Gemma3 attention, to Triton kernels), so it needs a C compiler at runtime.
+RUN if [ "$TORCH_VARIANT" = "gpu" ]; then \
+        apt-get update && apt-get install -y --no-install-recommends gcc libc6-dev \
+        && rm -rf /var/lib/apt/lists/*; \
+    fi
 
 # ---- runtime -----------------------------------------------------------------
 FROM base AS runtime
