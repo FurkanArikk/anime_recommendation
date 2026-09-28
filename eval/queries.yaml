@@ -1,0 +1,139 @@
+# Retrieval evaluation set: natural-language requests -> anime a knowledgeable fan would
+# accept as a correct answer. Queries describe premise/mood and avoid title words, so the
+# score measures semantic understanding rather than keyword overlap.
+#
+#   franchises: title prefixes (sequels/movies of the franchise also count as hits)
+#   titles:     exact titles, for prefixes that would be ambiguous (e.g. "Monster")
+#
+# A query counts as a hit@k if ANY relevant anime appears in the top k.
+# All relevant anime are within the top ~970 by MAL rank, so models with partial
+# coverage (Gemini free tier) can be compared on the same corpus.
+
+queries:
+  - id: genius-vs-detective
+    query: a genius student gets the power to kill anyone and plays a mind game with a brilliant detective
+    franchises: ["Death Note"]
+
+  - id: rebellion-mastermind
+    query: an exiled prince with the power to command anyone leads a masked rebellion against an empire
+    franchises: ["Code Geass"]
+
+  - id: time-travel-save-friends
+    query: time travel to save friends from a tragic fate
+    franchises: ["Steins;Gate", "Boku dake ga Inai Machi", "Re:Zero"]
+
+  - id: surgeon-serial-killer
+    query: a surgeon hunts a charming serial killer he once saved, a slow psychological thriller across Europe
+    titles: ["Monster"]
+
+  - id: dystopian-crime-prediction
+    query: police in a future where a system measures how likely citizens are to commit crimes
+    franchises: ["Psycho-Pass"]
+
+  - id: titans-walls
+    query: humanity lives behind giant walls to hide from man-eating giants
+    franchises: ["Shingeki no Kyojin"]
+
+  - id: boxing-underdog
+    query: a bullied boy discovers boxing and trains to become a champion
+    franchises: ["Hajime no Ippo", "Ashita no Joe"]
+
+  - id: volleyball-short-player
+    query: a short high school player who can jump incredibly high joins the volleyball team
+    franchises: ["Haikyuu"]
+
+  - id: camping-girls
+    query: relaxing slice of life about girls camping in the mountains in winter
+    franchises: ["Yuru Camp"]
+
+  - id: spirits-countryside
+    query: a gentle boy who can see spirits returns their names in a quiet countryside
+    franchises: ["Natsume Yuujinchou", "Mushishi"]
+
+  - id: space-bounty-hunters
+    query: jazz-scored adventures of a crew of broke bounty hunters on a spaceship
+    franchises: ["Cowboy Bebop"]
+
+  - id: alchemy-brothers
+    query: two brothers use alchemy to search for a way to restore their bodies after a forbidden ritual
+    franchises: ["Fullmetal Alchemist"]
+
+  - id: vikings-revenge
+    query: a young viking seeks revenge on the mercenary who killed his father, then learns the meaning of peace
+    franchises: ["Vinland Saga"]
+
+  - id: descend-into-abyss
+    query: an orphan girl and a robot boy descend into a deadly giant pit full of mysterious creatures
+    franchises: ["Made in Abyss"]
+
+  - id: elf-after-hero-party
+    query: an elf mage reflects on the meaning of time after the hero she travelled with dies of old age
+    franchises: ["Sousou no Frieren"]
+
+  - id: deaf-girl-bullying
+    query: a former bully tries to make amends with the deaf girl he tormented in elementary school
+    franchises: ["Koe no Katachi"]
+
+  - id: pianist-grief
+    query: a piano prodigy who lost his ability to hear his own playing meets a free-spirited violinist
+    franchises: ["Shigatsu wa Kimi no Uso"]
+
+  - id: letters-war-veteran
+    query: a former child soldier writes letters for others to understand the words love you
+    franchises: ["Violet Evergarden"]
+
+  - id: body-swap-comet
+    query: a city boy and a country girl mysteriously swap bodies while a comet approaches
+    franchises: ["Kimi no Na wa"]
+
+  - id: bathhouse-spirits
+    query: a girl must work in a bathhouse for spirits to save her parents who were turned into pigs
+    franchises: ["Sen to Chihiro"]
+
+  - id: war-orphans-firebombing
+    query: two siblings struggle to survive in japan at the end of world war two
+    franchises: ["Hotaru no Haka"]
+
+  - id: spy-family
+    query: a spy must build a fake family with a telepathic child and an assassin wife for a mission
+    franchises: ["Spy x Family"]
+
+  - id: love-war-student-council
+    query: two proud student council geniuses scheme to make the other confess their love first
+    franchises: ["Kaguya-sama"]
+
+  - id: shy-guitarist
+    query: an extremely socially anxious girl who plays guitar joins a rock band
+    franchises: ["Bocchi the Rock", "K-On"]
+
+  - id: magical-girl-dark
+    query: a dark deconstruction of magical girls who make a contract with a cute creature
+    franchises: ["Mahou Shoujo Madoka"]
+
+  - id: space-opera-strategy
+    query: two brilliant admirals of rival star nations clash in a political and military space opera
+    franchises: ["Ginga Eiyuu Densetsu"]
+
+  - id: china-warring-states
+    query: a war orphan dreams of becoming the greatest general during the warring states of ancient china
+    franchises: ["Kingdom"]
+
+  - id: orphans-escape-farm
+    query: gifted orphans discover their idyllic orphanage is a farm and plan an escape
+    franchises: ["Yakusoku no Neverland"]
+
+  - id: cooking-dungeon
+    query: adventurers cook and eat the monsters they defeat while exploring a dungeon
+    franchises: ["Dungeon Meshi"]
+
+  - id: apothecary-palace-mysteries
+    query: a sharp-witted apothecary girl solves poisonings and mysteries in the imperial palace
+    franchises: ["Kusuriya no Hitorigoto"]
+
+  - id: antarctica-trip
+    query: four high school girls travel to antarctica
+    franchises: ["Sora yori mo Tooi Basho"]
+
+  - id: shogi-depression
+    query: a lonely teenage shogi professional finds warmth with three sisters
+    franchises: ["3-gatsu no Lion"]

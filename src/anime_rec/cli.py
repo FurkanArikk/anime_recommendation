@@ -11,20 +11,11 @@ python -m anime_rec eval     # retrieval quality report
 import argparse
 import subprocess
 import sys
-from collections.abc import Callable
 from pathlib import Path
 
 from anime_rec.log import configure_logging, get_logger
 
 log = get_logger(__name__)
-
-
-def _not_yet(phase: str) -> Callable[[argparse.Namespace], None]:
-    def run(_: argparse.Namespace) -> None:
-        log.error("stage not implemented yet", phase=phase)
-        sys.exit(1)
-
-    return run
 
 
 def _ingest(_: argparse.Namespace) -> None:
@@ -52,6 +43,19 @@ def _index(args: argparse.Namespace) -> None:
     from anime_rec.vectorstore.indexer import run_index
 
     run_index(get_settings(), recreate=args.recreate, partial=args.partial)
+
+
+def _eval(args: argparse.Namespace) -> None:
+    from anime_rec.config import get_settings
+    from anime_rec.evaluation.run import run_eval
+
+    run_eval(
+        get_settings(),
+        models=args.models.split(",") if args.models else None,
+        templates=args.templates.split(",") if args.templates else None,
+        top=args.top,
+        queries_path=Path(args.queries),
+    )
 
 
 def _serve(args: argparse.Namespace) -> None:
@@ -96,11 +100,17 @@ def build_parser() -> argparse.ArgumentParser:
     )
     index.set_defaults(func=_index)
 
-    # Stages filled in by later phases.
-    for name, help_text, phase in [
-        ("eval", "run retrieval evaluation", "phase 9"),
-    ]:
-        sub.add_parser(name, help=help_text).set_defaults(func=_not_yet(phase))
+    ev = sub.add_parser("eval", help="compare embedding models/templates on the query set")
+    ev.add_argument(
+        "--models",
+        help="comma-separated, e.g. local:BAAI/bge-base-en-v1.5,gemini:gemini-embedding-001",
+    )
+    ev.add_argument(
+        "--templates", help="comma-separated document templates (default: DOCUMENT_TEMPLATE)"
+    )
+    ev.add_argument("--top", type=int, help="restrict the corpus to the top-N ranked anime")
+    ev.add_argument("--queries", default="eval/queries.yaml")
+    ev.set_defaults(func=_eval)
 
     serve = sub.add_parser("serve", help="run the FastAPI backend")
     serve.add_argument("--host", default="0.0.0.0")

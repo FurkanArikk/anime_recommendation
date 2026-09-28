@@ -37,8 +37,8 @@ embed: ## Parquet -> cached embeddings (GPU=1 for CUDA; ARGS="--limit 20" for a 
 	$(APP) anime-rec embed $(ARGS)
 index: ## Embeddings -> Qdrant (ARGS="--recreate" to rebuild)
 	$(APP) anime-rec index $(ARGS)
-eval: ## Retrieval evaluation report
-	$(APP) anime-rec eval
+eval: ## Retrieval evaluation (GPU=1; ARGS="--models local:A,local:B --templates full,synopsis_only")
+	$(APP) anime-rec eval $(ARGS)
 pipeline: ingest embed index ## Run all pipeline stages
 
 # Only needed with EMBEDDING_PROVIDER=gemini on the free tier (1,000 embeddings/day shared

@@ -42,6 +42,9 @@ services:
   pipeline:
     <<: *app
     command: ["anime-rec", "--help"]
+    volumes:
+      - ./data:/app/data
+      - ./eval:/app/eval:ro # evaluation query set
     profiles: ["pipeline"]
 
   # Tests, lint, type checks:  docker compose run --rm dev <command>
