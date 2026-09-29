@@ -16,6 +16,9 @@ jobs:
   quality:
     name: Lint, types, tests
     runs-on: ubuntu-latest
+    env:
+      # `uv run` would otherwise re-sync without the cpu extra and pull CUDA torch (GBs).
+      UV_NO_SYNC: "1"
     steps:
       - uses: actions/checkout@v4
 
