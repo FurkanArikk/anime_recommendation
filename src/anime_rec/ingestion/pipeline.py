@@ -12,6 +12,7 @@ import pandera.pandas as pa
 from anime_rec.config import Settings
 from anime_rec.ingestion import schema
 from anime_rec.ingestion.clean import CleaningReport, RawTables, clean_anime
+from anime_rec.ingestion.jikan import load_enrichment
 from anime_rec.log import get_logger
 
 log = get_logger(__name__)
@@ -75,7 +76,10 @@ def load_raw(raw_dir: Path) -> RawTables:
 def run_ingest(settings: Settings) -> Path:
     raw = load_raw(settings.raw_dir)
     report = CleaningReport()
-    clean = schema.CLEAN_ANIME.validate(clean_anime(raw, report), lazy=True)
+    enrichment = load_enrichment(settings.jikan_dir)
+    if enrichment is None:
+        log.info("no Jikan enrichment found; run `anime-rec enrich` to add titles/genres")
+    clean = schema.CLEAN_ANIME.validate(clean_anime(raw, report, enrichment), lazy=True)
     log.info("cleaning report", **report.counts)
 
     out = settings.processed_parquet
@@ -93,6 +97,6 @@ def load_processed(settings: Settings) -> pd.DataFrame:
     if not path.exists():
         raise FileNotFoundError(f"{path} not found; run `anime-rec ingest` first")
     df = pd.read_parquet(path)
-    for col in schema.LIST_COLUMNS:
+    for col in schema.ALL_LIST_COLUMNS:
         df[col] = df[col].map(list)
     return df

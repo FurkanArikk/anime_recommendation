@@ -75,6 +75,8 @@ LIST_COLUMNS = [
     "original_creators",
     "main_characters",
 ]
+# Every list-valued column in the cleaned output (parquet round-trips them as arrays).
+ALL_LIST_COLUMNS = [*LIST_COLUMNS, "title_synonyms"]
 
 CLEAN_ANIME = pa.DataFrameSchema(
     {
@@ -94,6 +96,13 @@ CLEAN_ANIME = pa.DataFrameSchema(
         "image_url": pa.Column(str),
         "mal_url": pa.Column(str, pa.Check.str_startswith("https://myanimelist.net/anime/")),
         **{col: pa.Column(object, _is_list) for col in LIST_COLUMNS},
+        # Jikan enrichment (empty when the enrich stage hasn't run)
+        "title_english": pa.Column(str, nullable=True),
+        "title_japanese": pa.Column(str, nullable=True),
+        "source": pa.Column(str, nullable=True),
+        "age_rating": pa.Column(str, nullable=True),
+        "season": pa.Column(str, nullable=True),
+        "title_synonyms": pa.Column(object, _is_list),
     },
     checks=pa.Check(
         lambda df: (

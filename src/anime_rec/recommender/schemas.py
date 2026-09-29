@@ -1,0 +1,54 @@
+"""Typed recommendation results (also the API response models)."""
+
+from typing import Any
+
+from pydantic import BaseModel, Field
+
+
+class Character(BaseModel):
+    name: str
+    role: str
+    image_url: str | None = None
+    voice_actor: str | None = None
+
+
+class AnimeHit(BaseModel):
+    anime_id: int
+    title: str
+    title_english: str | None = None
+    title_japanese: str | None = None
+    title_synonyms: list[str] = Field(default_factory=list)
+    synopsis: str | None = None
+    type: str
+    episodes: int | None = None
+    start_year: int | None = None
+    end_year: int | None = None
+    is_ongoing: bool = False
+    score: float
+    rank: int
+    popularity: int
+    members: int
+    image_url: str
+    mal_url: str
+    genres: list[str] = Field(default_factory=list)
+    themes: list[str] = Field(default_factory=list)
+    demographics: list[str] = Field(default_factory=list)
+    studios: list[str] = Field(default_factory=list)
+    directors: list[str] = Field(default_factory=list)
+    original_creators: list[str] = Field(default_factory=list)
+    main_characters: list[Character] = Field(default_factory=list)
+    source: str | None = None
+    age_rating: str | None = None
+    season: str | None = None
+    similarity: float | None = Field(default=None, description="cosine similarity to the query")
+    reason: str | None = Field(default=None, description="LLM explanation, grounded in this entry")
+
+    @classmethod
+    def from_payload(cls, payload: dict[str, Any], similarity: float | None = None) -> "AnimeHit":
+        return cls.model_validate({**payload, "similarity": similarity})
+
+
+class Recommendation(BaseModel):
+    items: list[AnimeHit]
+    summary: str | None = None
+    explained: bool = Field(default=False, description="True if the LLM re-ranked/explained")

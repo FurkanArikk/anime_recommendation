@@ -179,8 +179,48 @@ def build_main_characters(
     return records.groupby(df["anime_id"], sort=False).agg(list).rename("main_characters")
 
 
-def clean_anime(raw: RawTables, report: CleaningReport | None = None) -> pd.DataFrame:
-    """Join and clean all raw tables into one row per anime (column order = CLEAN_ANIME)."""
+ENRICH_SCALARS = ["title_english", "title_japanese", "source", "age_rating", "season"]
+
+
+def merge_enrichment(
+    df: pd.DataFrame, enrichment: pd.DataFrame | None, report: CleaningReport
+) -> pd.DataFrame:
+    """Add Jikan fields; tag lists become the union of scraped and Jikan values.
+
+    Columns always exist (empty without enrichment), so the output schema is stable.
+    """
+    df = df.copy()
+    for col in ENRICH_SCALARS:
+        df[col] = None
+    df["title_synonyms"] = [[] for _ in range(len(df))]
+    if enrichment is None or enrichment.empty:
+        return df
+
+    e = enrichment.reindex(df["anime_id"].to_numpy())
+    had_genre = df["genres"].map(len) > 0
+    for col in ("genres", "themes", "demographics"):
+        df[col] = [
+            sorted(set(a) | set(b if isinstance(b, list) else []))
+            for a, b in zip(df[col], e[col], strict=True)
+        ]
+    for col in ENRICH_SCALARS:
+        df[col] = [v if isinstance(v, str) else None for v in e[col]]
+    df["title_synonyms"] = [v if isinstance(v, list) else [] for v in e["title_synonyms"]]
+
+    report.add("enriched_anime", int(e["genres"].map(lambda v: isinstance(v, list)).sum()))
+    report.add("main_genre_filled_by_jikan", (~had_genre & (df["genres"].map(len) > 0)).sum())
+    return df
+
+
+def clean_anime(
+    raw: RawTables,
+    report: CleaningReport | None = None,
+    enrichment: pd.DataFrame | None = None,
+) -> pd.DataFrame:
+    """Join and clean all raw tables into one row per anime (column order = CLEAN_ANIME).
+
+    `enrichment` (optional) is parsed Jikan data indexed by anime_id; see ingestion/jikan.py.
+    """
     report = report if report is not None else CleaningReport()
 
     anime = raw.anime.drop_duplicates()
@@ -229,6 +269,8 @@ def clean_anime(raw: RawTables, report: CleaningReport | None = None) -> pd.Data
     out = out.join(lists, how="left").reset_index(drop=True)
     for col in lists.columns:
         out[col] = out[col].map(lambda v: v if isinstance(v, list) else [])
+
+    out = merge_enrichment(out, enrichment, report)
 
     no_genre = out["genres"].map(len) == 0
     no_tags = no_genre & (out["themes"].map(len) == 0) & (out["demographics"].map(len) == 0)

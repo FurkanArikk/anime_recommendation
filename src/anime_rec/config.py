@@ -17,16 +17,21 @@ class Settings(BaseSettings):
 
     # --- Embeddings ---
     embedding_provider: Literal["local", "gemini"] = "local"
-    document_template: str = "full"  # see embeddings/documents.py TEMPLATES
+    document_template: str = "synopsis_only"  # beat "full" for every model in eval
 
     # Local (Hugging Face sentence-transformers); dimension comes from the model.
-    local_embedding_model: str = "BAAI/bge-base-en-v1.5"
+    local_embedding_model: str = "google/embeddinggemma-300m"  # best in eval (see README)
     embedding_device: str = "auto"  # auto | cpu | cuda
     local_batch_size: int = Field(default=64, ge=1)
 
     # --- Gemini (chat/explanations; optional embedding provider) ---
     gemini_api_key: SecretStr | None = None
     gemini_chat_model: str = "gemini-2.5-flash"
+    # Tried in order when the primary is overloaded (503) or rate-limited (429).
+    gemini_chat_fallback_models: list[str] = ["gemini-3.5-flash-lite"]
+    # Gemini 2.5 "thinking" tripled latency (13.7s -> 3s at 0) with no visible quality gain for
+    # this short, grounded task. None = model default. Gemini 3 uses levels, not budgets.
+    gemini_thinking_budget: int | None = 0
     gemini_embedding_model: str = "gemini-embedding-001"
     embedding_dim: int = 768  # Gemini output size (Matryoshka: 768 | 1536 | 3072)
     embedding_batch_size: int = Field(default=50, ge=1, le=100)
@@ -58,6 +63,10 @@ class Settings(BaseSettings):
     @property
     def raw_dir(self) -> Path:
         return self.data_dir / "raw"
+
+    @property
+    def jikan_dir(self) -> Path:
+        return self.raw_dir / "jikan"
 
     @property
     def processed_dir(self) -> Path:

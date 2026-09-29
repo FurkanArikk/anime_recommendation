@@ -79,4 +79,5 @@ def test_factory_selects_provider(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(local, "load_sentence_transformer", lambda *_: FakeSentenceTransformer())
     settings = Settings(_env_file=None, embedding_provider="local")  # type: ignore[call-arg]
     embedder = create_embedder(settings)
-    assert isinstance(embedder, LocalEmbedder) and embedder.model == MODEL
+    assert isinstance(embedder, LocalEmbedder)
+    assert embedder.model == settings.local_embedding_model

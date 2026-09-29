@@ -8,6 +8,7 @@ per-batch commits, so a crash or Ctrl-C loses at most the batch in flight.
 
 import hashlib
 import sqlite3
+import threading
 from array import array
 from collections.abc import Iterable, Mapping, Sequence
 from pathlib import Path
@@ -42,7 +43,10 @@ def _from_blob(blob: bytes) -> list[float]:
 class EmbeddingCache:
     def __init__(self, path: Path) -> None:
         path.parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(path)
+        # The API calls this from FastAPI's worker threads: allow cross-thread use and
+        # serialise access ourselves (SQLite connections are not safe to share unlocked).
+        self._conn = sqlite3.connect(path, check_same_thread=False)
+        self._lock = threading.Lock()
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.execute(_SCHEMA)
 
@@ -52,16 +56,17 @@ class EmbeddingCache:
         for i in range(0, len(keys), _SQLITE_MAX_PARAMS):
             chunk = keys[i : i + _SQLITE_MAX_PARAMS]
             placeholders = ",".join("?" * len(chunk))
-            rows = self._conn.execute(
-                f"SELECT key, vector FROM embeddings WHERE key IN ({placeholders})", chunk
-            )
+            with self._lock:
+                rows = self._conn.execute(
+                    f"SELECT key, vector FROM embeddings WHERE key IN ({placeholders})", chunk
+                ).fetchall()
             found.update((key, _from_blob(blob)) for key, blob in rows)
         return found
 
     def put_many(
         self, vectors: Mapping[str, Sequence[float]], *, model: str, task_type: str, dim: int
     ) -> None:
-        with self._conn:  # one transaction per call = one atomic commit per API batch
+        with self._lock, self._conn:  # one transaction per call = one atomic commit per batch
             self._conn.executemany(
                 "INSERT OR REPLACE INTO embeddings (key, model, task_type, dim, vector) "
                 "VALUES (?, ?, ?, ?, ?)",
@@ -69,7 +74,8 @@ class EmbeddingCache:
             )
 
     def __len__(self) -> int:
-        return int(self._conn.execute("SELECT COUNT(*) FROM embeddings").fetchone()[0])
+        with self._lock:
+            return int(self._conn.execute("SELECT COUNT(*) FROM embeddings").fetchone()[0])
 
     def close(self) -> None:
         self._conn.close()

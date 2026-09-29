@@ -25,6 +25,17 @@ def _ingest(_: argparse.Namespace) -> None:
     run_ingest(get_settings())
 
 
+def _enrich(args: argparse.Namespace) -> None:
+    from anime_rec.config import get_settings
+    from anime_rec.ingestion.jikan import JikanUnavailableError, run_enrich
+
+    try:
+        run_enrich(get_settings(), limit=args.limit)
+    except JikanUnavailableError as exc:
+        log.warning("stopped early", reason=str(exc))
+        sys.exit(3)
+
+
 def _embed(args: argparse.Namespace) -> None:
     from anime_rec.config import get_settings
     from anime_rec.embeddings.gemini import DailyQuotaExceededError
@@ -82,6 +93,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("ingest", help="clean raw CSVs into parquet").set_defaults(func=_ingest)
+
+    enrich = sub.add_parser("enrich", help="fetch English titles/genres from Jikan (cached)")
+    enrich.add_argument("--limit", type=int, help="only the top-N ranked anime")
+    enrich.set_defaults(func=_enrich)
 
     embed = sub.add_parser("embed", help="embed documents with Gemini (cached, resumable)")
     embed.add_argument("--template", help="document template (default: DOCUMENT_TEMPLATE)")
