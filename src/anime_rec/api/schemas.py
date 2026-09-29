@@ -4,8 +4,9 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, model_validator
 
+from anime_rec.recommender.chat import Understood
 from anime_rec.recommender.filters import SearchFilters
-from anime_rec.recommender.schemas import AnimeHit
+from anime_rec.recommender.schemas import AnimeHit, AnimeRef
 
 MAX_LIMIT = 30
 
@@ -44,14 +45,6 @@ class RecommendRequest(_Request):
     strategy: Literal["best_score", "average_vector", "sum_scores"] = "best_score"
 
 
-class AnimeRef(BaseModel):
-    anime_id: int
-    title: str
-    title_english: str | None = None
-    image_url: str | None = None
-    members: int | None = None
-
-
 class RecommendationResponse(BaseModel):
     items: list[AnimeHit]
     summary: str | None = None
@@ -66,3 +59,24 @@ class ReadyResponse(BaseModel):
     points: int
     embedding_model: str
     chat_models: list[str]
+
+
+class ChatRequest(BaseModel):
+    message: str = Field(
+        min_length=1,
+        max_length=1000,
+        examples=["something like Death Note but funnier, under 25 episodes"],
+    )
+    filters: SearchFilters = Field(default_factory=SearchFilters, description="from UI controls")
+    liked: list[int] = Field(default_factory=list, max_length=20)
+    disliked: list[int] = Field(default_factory=list, max_length=20)
+    limit: int = Field(default=6, ge=1, le=MAX_LIMIT)
+    explain: bool = True
+
+
+class ChatResponse(BaseModel):
+    items: list[AnimeHit]
+    summary: str | None = None
+    explained: bool = False
+    understood: Understood
+    took_ms: int

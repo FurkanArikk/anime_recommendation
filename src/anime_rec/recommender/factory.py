@@ -5,6 +5,8 @@ from anime_rec.embeddings.cache import EmbeddingCache
 from anime_rec.embeddings.factory import create_embedder
 from anime_rec.log import get_logger
 from anime_rec.recommender.explain import Explainer
+from anime_rec.recommender.intent import IntentParser
+from anime_rec.recommender.llm import GeminiJson
 from anime_rec.recommender.service import RecommenderService
 from anime_rec.vectorstore.qdrant import get_client
 
@@ -14,9 +16,12 @@ log = get_logger(__name__)
 def build_service(settings: Settings) -> RecommenderService:
     # Query embeddings are cached too: repeated searches cost nothing.
     embedder = create_embedder(settings, cache=EmbeddingCache(settings.embedding_cache_path))
-    explainer = None
+    explainer, parser = None, None
     if settings.gemini_api_key is not None:
-        explainer = Explainer(settings)
+        llm = GeminiJson(settings)
+        explainer, parser = Explainer(llm=llm), IntentParser(llm)
     else:
-        log.warning("GEMINI_API_KEY not set: recommendations will not be explained")
-    return RecommenderService(get_client(settings), settings.qdrant_collection, embedder, explainer)
+        log.warning("GEMINI_API_KEY not set: no explanations or chat intent parsing")
+    return RecommenderService(
+        get_client(settings), settings.qdrant_collection, embedder, explainer, parser
+    )

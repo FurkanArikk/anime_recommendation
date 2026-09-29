@@ -16,7 +16,8 @@ from qdrant_client.http.exceptions import ResponseHandlingException, UnexpectedR
 
 from anime_rec import __version__
 from anime_rec.api.schemas import (
-    AnimeRef,
+    ChatRequest,
+    ChatResponse,
     ReadyResponse,
     RecommendationResponse,
     RecommendRequest,
@@ -25,7 +26,7 @@ from anime_rec.api.schemas import (
 )
 from anime_rec.config import Settings, get_settings
 from anime_rec.log import configure_logging, get_logger
-from anime_rec.recommender.schemas import AnimeHit, Facets
+from anime_rec.recommender.schemas import AnimeHit, AnimeRef, Facets
 from anime_rec.recommender.service import AnimeNotFoundError, RecommenderService
 
 log = get_logger(__name__)
@@ -50,16 +51,6 @@ def get_service(request: Request) -> RecommenderService:
 Service = Annotated[RecommenderService, Depends(get_service)]
 
 
-def _ref(hit: AnimeHit) -> AnimeRef:
-    return AnimeRef(
-        anime_id=hit.anime_id,
-        title=hit.title,
-        title_english=hit.title_english,
-        image_url=hit.image_url,
-        members=hit.members,
-    )
-
-
 def _respond(
     service: RecommenderService,
     hits: list[AnimeHit],
@@ -79,7 +70,7 @@ def _respond(
         items=items,
         summary=summary,
         explained=explained,
-        seeds=[_ref(s) for s in seeds or []],
+        seeds=[AnimeRef.of(s) for s in seeds or []],
         took_ms=round((time.perf_counter() - started) * 1000),
     )
 
@@ -225,6 +216,31 @@ def create_app(service_factory: ServiceFactory = _default_factory) -> FastAPI:
             limit=body.limit,
             started=started,
             seeds=seeds,
+        )
+
+    @app.post("/chat", tags=["recommend"], summary="Chat turn: free text, understood by Gemini")
+    def chat(body: ChatRequest, service: Service) -> ChatResponse:
+        """Parses the message into a query, liked/disliked titles and filters, merges them
+        with the UI's filters and picks, routes to search / similar / taste profile, and
+        explains the results. Returns what was understood alongside the results."""
+        started = time.perf_counter()
+        try:
+            rec, understood = service.chat(
+                body.message,
+                body.filters,
+                body.liked,
+                body.disliked,
+                limit=body.limit,
+                explain=body.explain,
+            )
+        except ValueError as exc:
+            raise HTTPException(422, str(exc)) from exc
+        return ChatResponse(
+            items=rec.items,
+            summary=rec.summary,
+            explained=rec.explained,
+            understood=understood,
+            took_ms=round((time.perf_counter() - started) * 1000),
         )
 
     return app

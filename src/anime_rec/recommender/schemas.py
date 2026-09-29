@@ -48,6 +48,24 @@ class AnimeHit(BaseModel):
         return cls.model_validate({**payload, "similarity": similarity})
 
 
+class AnimeRef(BaseModel):
+    anime_id: int
+    title: str
+    title_english: str | None = None
+    image_url: str | None = None
+    members: int | None = None
+
+    @classmethod
+    def of(cls, hit: "AnimeHit") -> "AnimeRef":
+        return cls(
+            anime_id=hit.anime_id,
+            title=hit.title,
+            title_english=hit.title_english,
+            image_url=hit.image_url,
+            members=hit.members,
+        )
+
+
 class Recommendation(BaseModel):
     items: list[AnimeHit]
     summary: str | None = None
