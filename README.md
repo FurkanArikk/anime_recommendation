@@ -1,6 +1,6 @@
 # 🌸 AniRec: chat-based anime recommendations
 
-[![CI](https://github.com/FurkanArikk/anime-recommendation/actions/workflows/ci.yml/badge.svg)](https://github.com/FurkanArikk/anime-recommendation/actions/workflows/ci.yml)
+[![CI](https://github.com/FurkanArikk/anime_recommendation/actions/workflows/ci.yml/badge.svg)](https://github.com/FurkanArikk/anime_recommendation/actions/workflows/ci.yml)
 ![Python](https://img.shields.io/badge/python-3.12-blue)
 ![Coverage](https://img.shields.io/badge/coverage-86%25-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
@@ -92,7 +92,7 @@ with the EmbeddingGemma license accepted. Optionally a
 [Gemini API key](https://aistudio.google.com/apikey).
 
 ```bash
-git clone https://github.com/FurkanArikk/anime-recommendation.git && cd anime-recommendation
+git clone https://github.com/FurkanArikk/anime_recommendation.git && cd anime_recommendation
 make env                     # creates .env: fill in QDRANT_*, HF_TOKEN, GEMINI_API_KEY
 # download the dataset from Kaggle (link below) and unzip it into data/raw/
 # e.g.: kaggle datasets download furkanark/myanimelist-top-10000-anime-dataset -p data/raw --unzip

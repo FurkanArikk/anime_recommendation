@@ -22,7 +22,7 @@ No GPU is needed to serve; a GPU only speeds up the one-off batch embedding.
 ## 2. Configuration
 
 ```bash
-git clone https://github.com/FurkanArikk/anime-recommendation.git && cd anime-recommendation
+git clone https://github.com/FurkanArikk/anime_recommendation.git && cd anime_recommendation
 make env        # creates .env from .env.example
 ```
 
