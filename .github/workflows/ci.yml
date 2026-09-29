@@ -50,7 +50,7 @@ jobs:
       - uses: docker/setup-buildx-action@v3
 
       - name: API / pipeline image (runtime target)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           target: runtime
@@ -59,7 +59,7 @@ jobs:
           cache-to: type=gha,scope=runtime,mode=max
 
       - name: Web image
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: ./web
           push: false
