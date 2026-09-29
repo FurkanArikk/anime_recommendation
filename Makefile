@@ -6,7 +6,7 @@ PIPELINE_COMPOSE := $(COMPOSE)$(if $(GPU), -f docker-compose.yml -f docker-compo
 APP     := $(PIPELINE_COMPOSE) run --rm --build pipeline
 
 .DEFAULT_GOAL := help
-.PHONY: help env build lock up down logs enrich ingest embed index refresh eval pipeline test lint format typecheck check shell
+.PHONY: help env build lock up down logs screenshots enrich ingest embed index refresh eval pipeline test lint format typecheck check shell
 
 help: ## Show available targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
@@ -21,8 +21,14 @@ build: ## Build runtime, pipeline and dev images (GPU=1 builds the CUDA pipeline
 lock: ## (Re)generate uv.lock inside the dev container
 	$(DEV) uv lock
 
-up: ## Start API + UI (uses the Qdrant cluster from .env)
+up: ## Start API (:8000/docs) + web UI (:8080), using the Qdrant cluster from .env
 	$(COMPOSE) up -d --build
+
+screenshots: ## Headless-browser screenshots of the running UI -> docs/screenshots (needs make up)
+	docker run --rm --network anime_recommendation_default --user $$(id -u):$$(id -g) \
+		-v $(CURDIR)/scripts:/scripts:ro -v $(CURDIR)/docs/screenshots:/out \
+		-e HOME=/tmp -e PYTHONPATH=/tmp/pw mcr.microsoft.com/playwright/python:v1.63.0-noble \
+		sh -c "pip install -q --target /tmp/pw playwright==1.63.0 && python /scripts/screenshots.py http://web /out"
 
 down: ## Stop all services
 	$(COMPOSE) --profile local-qdrant down

@@ -25,7 +25,7 @@ def test_invalid_embedding_dim_rejected(monkeypatch: pytest.MonkeyPatch) -> None
         Settings(_env_file=None)  # type: ignore[call-arg]
 
 
-@pytest.mark.parametrize("command", ["ingest", "embed", "index", "serve", "ui", "eval"])
+@pytest.mark.parametrize("command", ["enrich", "ingest", "embed", "index", "serve", "eval"])
 def test_cli_has_all_stages(command: str) -> None:
     args = build_parser().parse_args([command])
     assert args.command == command

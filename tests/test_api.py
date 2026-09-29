@@ -139,3 +139,10 @@ def test_recommend_validation(client: TestClient, payload: dict[str, Any]) -> No
 
 def test_empty_query_rejected(client: TestClient) -> None:
     assert client.post("/search", json={"query": ""}).status_code == 422
+
+
+def test_popular_and_title_thumbnails(client: TestClient) -> None:
+    popular = client.get("/popular", params={"limit": 2}).json()
+    assert [a["title"] for a in popular] == ["Death Note", "Shingeki no Kyojin"]  # by members
+    titles = client.get("/titles", params={"q": "death"}).json()
+    assert titles[0]["image_url"].startswith("https://cdn.myanimelist.net/")

@@ -49,6 +49,7 @@ class TitleEntry:
     members: int
     aliases: tuple[str, ...] = ()  # English title, synonyms
     english: str | None = None
+    image_url: str | None = None
 
     @property
     def names(self) -> tuple[str, ...]:
@@ -70,6 +71,9 @@ class TitleIndex:
 
     def __len__(self) -> int:
         return len(self._entries)
+
+    def most_popular(self, limit: int) -> list[TitleEntry]:
+        return self._entries[:limit]
 
     def resolve(self, query: str, cutoff: float = 0.75) -> TitleEntry | None:
         """Exact (normalized) match, then prefix match, then fuzzy match."""

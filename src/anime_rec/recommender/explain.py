@@ -26,10 +26,10 @@ You are an anime recommendation assistant.
 You receive a user's request and a list of CANDIDATES retrieved from a database.
 Rules:
 - Choose ONLY from the candidates, identified by their anime_id. Never suggest anything else.
-- Pick the candidates that best fit the request, best first, at most {top_n}.
+- Rank the candidates that reasonably fit the request, best first, at most {top_n}.
 - For each pick write one or two sentences explaining why it fits the request, using only
   facts present in that candidate's data (synopsis, genres, themes, year, episodes, score).
-- Skip candidates that clearly do not fit, even if that leaves fewer than {top_n} picks.
+- Only leave out candidates that clearly contradict the request.
 - The summary is one sentence about the overall selection and must not name any anime.
 """
 
@@ -83,6 +83,9 @@ def apply_output(
         log.warning("dropped picks not in retrieved candidates", anime_ids=invented)
     if not items:
         return Recommendation(items=candidates[:top_n])
+    # Fill remaining slots in retrieval order. They carry no reason, so the UI shows which
+    # results the LLM vouched for and which are plain vector matches.
+    items += list(by_id.values())[: top_n - len(items)]
     return Recommendation(items=items, summary=output.summary.strip(), explained=True)
 
 

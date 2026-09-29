@@ -1,4 +1,4 @@
-# Default: api + ui, talking to the Qdrant cluster configured in .env (QDRANT_URL / QDRANT_API_KEY).
+# Default: api + web, talking to the Qdrant cluster configured in .env (QDRANT_URL / QDRANT_API_KEY).
 # Offline dev with a local Qdrant:   docker compose --profile local-qdrant up
 #   (and set QDRANT_URL=http://qdrant:6333 in .env)
 
@@ -27,12 +27,13 @@ services:
       start_period: 120s # model load + catalog scan happen before the port opens
     restart: unless-stopped
 
-  ui:
-    <<: *app
-    command: ["anime-rec", "ui", "--port", "8501"]
-    ports: ["8501:8501"]
-    environment:
-      API_URL: http://api:8000
+  # Static frontend + reverse proxy to the API (same origin, no CORS).
+  web:
+    image: nginx:1.27-alpine
+    ports: ["8080:80"]
+    volumes:
+      - ./web:/usr/share/nginx/html:ro
+      - ./web/nginx.conf:/etc/nginx/conf.d/default.conf:ro
     depends_on:
       api:
         condition: service_healthy

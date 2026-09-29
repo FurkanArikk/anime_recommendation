@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>AniRec · find your next anime</title>
+    <meta name="description" content="Chat-based anime recommendations over the MyAnimeList top 10k: semantic search, taste profiles and grounded AI explanations." />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌸</text></svg>" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="css/styles.css" />
+    <script type="module" src="js/app.js"></script>
+  </head>
+  <body>
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="AniRec home">
+        <span class="brand-mark" aria-hidden="true">🌸</span>
+        <span class="brand-name">Ani<span class="grad">Rec</span></span>
+      </a>
+      <div class="status" id="status" aria-live="polite">
+        <span class="dot"></span><span id="status-text">Connecting…</span>
+      </div>
+      <nav class="topnav">
+        <button class="btn ghost" id="taste-btn" type="button" aria-controls="taste-drawer">
+          <span aria-hidden="true">♡</span> Taste <span class="count" id="taste-count" hidden></span>
+        </button>
+        <button class="btn ghost" id="filters-btn" type="button" aria-controls="filters-drawer">
+          <span aria-hidden="true">⚙</span> Filters <span class="count" id="filters-count" hidden></span>
+        </button>
+        <button class="btn ghost" id="new-chat" type="button" title="Start a new conversation">
+          <span aria-hidden="true">＋</span><span class="hide-sm"> New chat</span>
+        </button>
+      </nav>
+    </header>
+
+    <main class="main">
+      <section class="hero" id="hero">
+        <div class="poster-wall" id="poster-wall" aria-hidden="true"></div>
+        <div class="hero-content">
+          <p class="eyebrow" id="hero-eyebrow">Semantic search · taste profiles · grounded AI picks</p>
+          <h1>What do you feel like <span class="grad">watching</span>?</h1>
+          <p class="sub">
+            Describe a mood, name shows you loved or hated, add limits like “under 25 episodes”.
+            Every pick comes from real MyAnimeList data, never invented.
+          </p>
+          <div class="examples" id="examples"></div>
+        </div>
+      </section>
+
+      <section class="thread" id="thread" aria-live="polite"></section>
+    </main>
+
+    <footer class="composer-wrap">
+      <form class="composer" id="composer">
+        <textarea id="message" rows="1" maxlength="1000" placeholder="e.g. a dark psychological thriller with a smart protagonist" aria-label="Your request"></textarea>
+        <button class="send" type="submit" aria-label="Send">
+          <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M3.4 20.4 21 12 3.4 3.6 3.4 10l12.6 2-12.6 2z"/></svg>
+        </button>
+      </form>
+      <div class="composer-meta">
+        <label class="switch">
+          <input type="checkbox" id="explain" checked />
+          <span class="track"><span class="thumb"></span></span>
+          Explain picks with Gemini
+        </label>
+        <label class="select">
+          Results
+          <select id="limit">
+            <option value="6">6</option>
+            <option value="9">9</option>
+            <option value="12">12</option>
+          </select>
+        </label>
+      </div>
+    </footer>
+
+    <div class="scrim" id="scrim" hidden></div>
+
+    <aside class="drawer" id="taste-drawer" aria-label="Your taste" hidden>
+      <header class="drawer-head">
+        <h2>Your taste</h2>
+        <button class="icon-btn" data-close type="button" aria-label="Close">✕</button>
+      </header>
+      <p class="hint">Every message uses these. Liked anime pull results toward them; disliked push away.</p>
+      <div class="search-box">
+        <input id="title-search" type="search" placeholder="Search 9,999 titles (romaji or English)" autocomplete="off" />
+        <ul class="suggestions" id="suggestions" role="listbox"></ul>
+      </div>
+      <h3 class="list-title">👍 Liked</h3>
+      <ul class="picks" id="liked-list"></ul>
+      <h3 class="list-title">👎 Disliked</h3>
+      <ul class="picks" id="disliked-list"></ul>
+    </aside>
+
+    <aside class="drawer" id="filters-drawer" aria-label="Filters" hidden>
+      <header class="drawer-head">
+        <h2>Filters</h2>
+        <button class="icon-btn" data-close type="button" aria-label="Close">✕</button>
+      </header>
+      <p class="hint">Hard limits applied inside the vector search. The assistant can add more from your message.</p>
+
+      <div class="field">
+        <label for="min-score">Minimum score <output id="min-score-out">any</output></label>
+        <input type="range" id="min-score" min="0" max="9" step="0.5" value="0" />
+      </div>
+      <div class="field two">
+        <label>First aired
+          <span class="row">
+            <input type="number" id="year-min" placeholder="from" inputmode="numeric" />
+            <span>–</span>
+            <input type="number" id="year-max" placeholder="to" inputmode="numeric" />
+          </span>
+        </label>
+        <label>Max episodes
+          <input type="number" id="max-episodes" min="1" placeholder="any" inputmode="numeric" />
+        </label>
+      </div>
+      <div class="field">
+        <span class="label">Format</span>
+        <div class="chip-set" id="type-chips"></div>
+      </div>
+      <div class="field">
+        <span class="label">Genres &amp; themes <small>click: include → exclude → off</small></span>
+        <input type="search" id="tag-search" placeholder="Filter tags…" />
+        <div class="chip-set tags" id="tag-chips"></div>
+      </div>
+      <button class="btn ghost wide" id="reset-filters" type="button">Reset filters</button>
+    </aside>
+
+    <dialog class="detail" id="detail" aria-label="Anime details"></dialog>
+    <div class="toasts" id="toasts" role="status"></div>
+  </body>
+</html>

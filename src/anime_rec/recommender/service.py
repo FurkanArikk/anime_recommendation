@@ -104,6 +104,7 @@ def _title_entry(anime_id: int, payload: dict[str, Any]) -> TitleEntry:
         int(payload["members"]),
         tuple(a for a in aliases if a and a != payload["title"]),
         english=payload.get("title_english"),
+        image_url=payload.get("image_url"),
     )
 
 
@@ -146,7 +147,7 @@ class RecommenderService:
     def _load_catalog(self) -> None:
         """One scroll over Qdrant (the serving source of truth; no parquet needed) builds
         the title index and the filter facets."""
-        fields = ["title", "members", "title_english", "title_synonyms", *FACET_FIELDS,
+        fields = ["title", "members", "title_english", "title_synonyms", "image_url", *FACET_FIELDS,
                   "start_year"]  # fmt: skip
         entries: list[TitleEntry] = []
         counts: dict[str, Counter[str]] = {f: Counter() for f in FACET_FIELDS}
@@ -200,6 +201,10 @@ class RecommenderService:
         if missing:
             raise AnimeNotFoundError(f"unknown anime_id(s): {missing}")
         return [found[i] for i in anime_ids]
+
+    def popular(self, limit: int = 20) -> list[AnimeHit]:
+        """Most-followed anime (MAL members), e.g. for a landing page."""
+        return self.get_many([e.anime_id for e in self.titles.most_popular(limit)])
 
     def resolve_title(self, title: str) -> AnimeHit:
         entry = self.titles.resolve(title)

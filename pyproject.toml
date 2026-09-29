@@ -1,7 +1,7 @@
 [project]
 name = "anime-rec"
 version = "0.1.0"
-description = "End-to-end anime recommendation system: Gemini embeddings + Qdrant + FastAPI + Streamlit"
+description = "End-to-end anime recommendation system: open embeddings + Qdrant + FastAPI + Gemini, with a chat web UI"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [
@@ -23,7 +23,6 @@ dependencies = [
     "fastapi>=0.115",
     "uvicorn[standard]>=0.30",
     "httpx>=0.27",
-    "streamlit>=1.40",
     # evaluation query set
     "pyyaml>=6.0",
 ]

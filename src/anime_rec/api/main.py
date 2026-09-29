@@ -146,9 +146,21 @@ def create_app(service_factory: ServiceFactory = _default_factory) -> FastAPI:
         limit: Annotated[int, Query(ge=1, le=10_000)] = 10,
     ) -> list[AnimeRef]:
         return [
-            AnimeRef(anime_id=e.anime_id, title=e.title, members=e.members, title_english=e.english)
+            AnimeRef(
+                anime_id=e.anime_id,
+                title=e.title,
+                members=e.members,
+                title_english=e.english,
+                image_url=e.image_url,
+            )
             for e in service.titles.suggest(q, limit)
         ]
+
+    @app.get("/popular", tags=["catalog"], summary="Most-followed anime (landing page)")
+    def popular(
+        service: Service, limit: Annotated[int, Query(ge=1, le=100)] = 20
+    ) -> list[AnimeHit]:
+        return service.popular(limit)
 
     @app.get("/facets", tags=["catalog"], summary="Filter values with counts, for UI pickers")
     def facets(service: Service) -> Facets:

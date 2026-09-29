@@ -49,7 +49,6 @@ class Settings(BaseSettings):
     data_dir: Path = Path("data")
 
     # --- Serving ---
-    api_url: str = "http://api:8000"  # used by the Streamlit UI
     log_level: str = "INFO"
     log_format: Literal["console", "json"] = "console"
 

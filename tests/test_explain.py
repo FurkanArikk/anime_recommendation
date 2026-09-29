@@ -65,8 +65,9 @@ def test_reranks_and_attaches_reasons() -> None:
     exp, models = explainer(output_json([(3, "future police"), (1, "slow-burn chase")]))
     rec = exp.explain("dark thriller", CANDIDATES, top_n=5)
     assert rec.explained
-    assert [h.anime_id for h in rec.items] == [3, 1]  # LLM order, weak fit dropped
+    assert [h.anime_id for h in rec.items] == [3, 1, 2]  # LLM order, then retrieval fill
     assert rec.items[0].reason == "future police"
+    assert rec.items[2].reason is None  # filled, not vouched for by the LLM
     assert rec.summary == "Tense thrillers."
     config = models.calls[0]["config"]
     assert config.response_mime_type == "application/json"
@@ -79,9 +80,9 @@ def test_invented_and_duplicate_ids_are_dropped() -> None:
                Pick(anime_id=2, reason="dup")],
         summary="s",
     )  # fmt: skip
-    rec = apply_output(out, CANDIDATES, top_n=5)
-    assert [h.anime_id for h in rec.items] == [2]
-    assert rec.items[0].reason == "a"
+    rec = apply_output(out, CANDIDATES, top_n=2)
+    assert [h.anime_id for h in rec.items] == [2, 1]  # 999 dropped, duplicate ignored, filled
+    assert rec.items[0].reason == "a" and rec.items[1].reason is None
 
 
 def test_only_invented_ids_falls_back_to_retrieval() -> None:
@@ -125,7 +126,7 @@ def api_error(code: int) -> errors.APIError:
 
 def test_overloaded_primary_falls_back_to_next_model() -> None:
     exp, models = explainer([api_error(503), output_json([(2, "fits")])])
-    rec = exp.explain("q", CANDIDATES)
+    rec = exp.explain("q", CANDIDATES, top_n=1)
     assert rec.explained and [h.anime_id for h in rec.items] == [2]
     assert [c["model"] for c in models.calls] == ["gemini-2.5-flash", "gemini-3.5-flash-lite"]
 

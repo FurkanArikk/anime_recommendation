@@ -9,7 +9,6 @@ python -m anime_rec eval     # retrieval quality report
 """
 
 import argparse
-import subprocess
 import sys
 from pathlib import Path
 
@@ -75,16 +74,6 @@ def _serve(args: argparse.Namespace) -> None:
     uvicorn.run("anime_rec.api.main:app", host=args.host, port=args.port, log_config=None)
 
 
-def _ui(args: argparse.Namespace) -> None:
-    app_path = Path(__file__).parent / "ui" / "app.py"
-    cmd = [
-        sys.executable, "-m", "streamlit", "run", str(app_path),
-        "--server.address", args.host, "--server.port", str(args.port),
-        "--server.headless", "true",
-    ]  # fmt: skip
-    sys.exit(subprocess.call(cmd))
-
-
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="anime_rec",
@@ -132,10 +121,6 @@ def build_parser() -> argparse.ArgumentParser:
     serve.add_argument("--port", type=int, default=8000)
     serve.set_defaults(func=_serve)
 
-    ui = sub.add_parser("ui", help="run the Streamlit front end")
-    ui.add_argument("--host", default="0.0.0.0")
-    ui.add_argument("--port", type=int, default=8501)
-    ui.set_defaults(func=_ui)
     return parser
 
 
