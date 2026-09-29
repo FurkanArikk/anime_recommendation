@@ -5,7 +5,9 @@
 ![Coverage](https://img.shields.io/badge/coverage-86%25-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 
-An end-to-end recommendation system over the **MyAnimeList top 10,000** anime. You describe
+An end-to-end recommendation system over the **MyAnimeList top 10,000** anime, built on
+a dataset I collected from MyAnimeList myself and
+[published on Kaggle](https://www.kaggle.com/datasets/furkanark/myanimelist-top-10000-anime-dataset). You describe
 what you feel like watching, e.g. *"something like Attack on Titan but funnier, under 25
 episodes"*. Gemini turns that into a structured query. **Qdrant** runs a filtered vector
 search over **EmbeddingGemma** embeddings (the model was picked by a measured evaluation).
@@ -92,7 +94,8 @@ with the EmbeddingGemma license accepted. Optionally a
 ```bash
 git clone https://github.com/FurkanArikk/anime-recommendation.git && cd anime-recommendation
 make env                     # creates .env: fill in QDRANT_*, HF_TOKEN, GEMINI_API_KEY
-# download the Kaggle dataset (furkanark/myanimelist-top-10000-anime-dataset) into data/raw/
+# download the dataset from Kaggle (link below) and unzip it into data/raw/
+# e.g.: kaggle datasets download furkanark/myanimelist-top-10000-anime-dataset -p data/raw --unzip
 make ingest embed index      # add GPU=1 to embed on an NVIDIA GPU (~1 min vs ~15 min on CPU)
 make up                      # UI: http://localhost:8080 · API docs: http://localhost:8000/docs
 ```
@@ -232,7 +235,10 @@ are faked.
 
 ## Data and license
 
-Data: [MyAnimeList Top 10,000 Anime](https://www.kaggle.com/datasets/furkanark/myanimelist-top-10000-anime-dataset)
-(CC BY 4.0), scraped from MyAnimeList. Optional enrichment comes from [Jikan](https://jikan.moe).
+**Data.** The dataset was collected from MyAnimeList by me and is published on Kaggle:
+[**MyAnimeList Top 10,000 Anime Dataset**](https://www.kaggle.com/datasets/furkanark/myanimelist-top-10000-anime-dataset) (CC BY 4.0). It holds 10,000 anime
+across 7 normalized tables: anime, genres, companies, characters, voice actors, staff and
+entities, with ISO-8601 dates. This project covers the rest of the path: profiling
+it, cleaning it and turning it into a recommender. Optional enrichment comes from [Jikan](https://jikan.moe).
 Posters and character images are served from MyAnimeList's CDN and belong to their
 respective rights holders. Code: [MIT](LICENSE).

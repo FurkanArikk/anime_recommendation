@@ -40,9 +40,15 @@ names as environment variables or secrets instead.
 
 ## 3. Data and index (one-off, or on data updates)
 
-Download the dataset from Kaggle
-([`furkanark/myanimelist-top-10000-anime-dataset`](https://www.kaggle.com/datasets/furkanark/myanimelist-top-10000-anime-dataset))
-into `data/raw/`, then:
+Download the dataset (collected from MyAnimeList by the author and published on Kaggle:
+[`furkanark/myanimelist-top-10000-anime-dataset`](https://www.kaggle.com/datasets/furkanark/myanimelist-top-10000-anime-dataset))
+into `data/raw/`, either from the Kaggle page or with the Kaggle CLI:
+
+```bash
+kaggle datasets download furkanark/myanimelist-top-10000-anime-dataset -p data/raw --unzip
+```
+
+Then:
 
 ```bash
 make ingest               # validate + clean  -> data/processed/anime.parquet
