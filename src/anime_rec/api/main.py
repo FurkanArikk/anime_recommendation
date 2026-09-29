@@ -143,7 +143,7 @@ def create_app(service_factory: ServiceFactory = _default_factory) -> FastAPI:
     def titles(
         service: Service,
         q: Annotated[str, Query(max_length=100)] = "",
-        limit: Annotated[int, Query(ge=1, le=50)] = 10,
+        limit: Annotated[int, Query(ge=1, le=10_000)] = 10,
     ) -> list[AnimeRef]:
         return [
             AnimeRef(anime_id=e.anime_id, title=e.title, members=e.members, title_english=e.english)
