@@ -3,6 +3,9 @@ name = "anime-rec"
 version = "0.1.0"
 description = "End-to-end anime recommendation system: open embeddings + Qdrant + FastAPI + Gemini, with a chat web UI"
 readme = "README.md"
+license = "MIT"
+authors = [{ name = "FurkanArikk", email = "fuaarik@gmail.com" }]
+keywords = ["recommender-system", "rag", "vector-search", "qdrant", "embeddings", "gemini", "anime"]
 requires-python = ">=3.11"
 dependencies = [
     # data

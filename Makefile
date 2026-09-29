@@ -6,7 +6,7 @@ PIPELINE_COMPOSE := $(COMPOSE)$(if $(GPU), -f docker-compose.yml -f docker-compo
 APP     := $(PIPELINE_COMPOSE) run --rm --build pipeline
 
 .DEFAULT_GOAL := help
-.PHONY: help env build lock up down logs screenshots enrich ingest embed index refresh eval pipeline test lint format typecheck check shell
+.PHONY: help env build lock up down prod logs screenshots enrich ingest embed index refresh eval pipeline test lint format typecheck check shell
 
 help: ## Show available targets
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk 'BEGIN {FS = ":.*## "}; {printf "  \033[36m%-10s\033[0m %s\n", $$1, $$2}'
@@ -29,6 +29,9 @@ screenshots: ## Headless-browser screenshots of the running UI -> docs/screensho
 		-v $(CURDIR)/scripts:/scripts:ro -v $(CURDIR)/docs/screenshots:/out \
 		-e HOME=/tmp -e PYTHONPATH=/tmp/pw mcr.microsoft.com/playwright/python:v1.63.0-noble \
 		sh -c "pip install -q --target /tmp/pw playwright==1.63.0 && python /scripts/screenshots.py http://web /out"
+
+prod: ## Production stack: only web published on :80, JSON logs (see docs/deployment.md)
+	$(COMPOSE) -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 
 down: ## Stop all services
 	$(COMPOSE) --profile local-qdrant down

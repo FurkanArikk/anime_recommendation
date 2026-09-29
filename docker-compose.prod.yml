@@ -1,0 +1,21 @@
+# Production overrides:  docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#  - only the web container is published (port 80); the API is reachable through it at /api
+#  - JSON logs (for a log shipper) with rotation, always restart
+# Put TLS in front (Caddy, Traefik, a cloud load balancer or Cloudflare): see docs/deployment.md.
+
+x-logging: &logging
+  driver: json-file
+  options: { max-size: "10m", max-file: "5" }
+
+services:
+  api:
+    ports: !reset []
+    environment:
+      LOG_FORMAT: json
+    restart: always
+    logging: *logging
+
+  web:
+    ports: !override ["80:80"]
+    restart: always
+    logging: *logging

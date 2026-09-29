@@ -1,3 +1,4 @@
+# pip install pre-commit && pre-commit install   (or: make shell, then pre-commit install)
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v5.0.0
@@ -5,13 +6,19 @@ repos:
       - id: trailing-whitespace
       - id: end-of-file-fixer
       - id: check-yaml
+        args: ["--unsafe"] # docker-compose uses !reset / !override tags
       - id: check-toml
+      - id: check-merge-conflict
       - id: check-added-large-files
-        args: ["--maxkb=1000"]
+        args: ["--maxkb=1500"]
       - id: detect-private-key
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.7.4
+    rev: v0.16.9 # keep in sync with uv.lock
     hooks:
       - id: ruff
         args: ["--fix"]
       - id: ruff-format
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.24.2
+    hooks:
+      - id: gitleaks # blocks commits containing API keys/tokens

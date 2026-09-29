@@ -71,7 +71,16 @@ def _eval(args: argparse.Namespace) -> None:
 def _serve(args: argparse.Namespace) -> None:
     import uvicorn
 
-    uvicorn.run("anime_rec.api.main:app", host=args.host, port=args.port, log_config=None)
+    uvicorn.run(
+        "anime_rec.api.main:app",
+        host=args.host,
+        port=args.port,
+        log_config=None,
+        # Behind nginx: trust X-Forwarded-* so logs show real client addresses.
+        proxy_headers=True,
+        forwarded_allow_ips="*",
+        timeout_graceful_shutdown=10,
+    )
 
 
 def build_parser() -> argparse.ArgumentParser:
