@@ -52,3 +52,17 @@ class Recommendation(BaseModel):
     items: list[AnimeHit]
     summary: str | None = None
     explained: bool = Field(default=False, description="True if the LLM re-ranked/explained")
+
+
+class FacetValue(BaseModel):
+    value: str
+    count: int
+
+
+class Facets(BaseModel):
+    genres: list[FacetValue] = Field(default_factory=list)
+    themes: list[FacetValue] = Field(default_factory=list)
+    demographics: list[FacetValue] = Field(default_factory=list)
+    type: list[FacetValue] = Field(default_factory=list)
+    year_min: int | None = None
+    year_max: int | None = None

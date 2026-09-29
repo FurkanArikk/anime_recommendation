@@ -48,6 +48,7 @@ class TitleEntry:
     title: str
     members: int
     aliases: tuple[str, ...] = ()  # English title, synonyms
+    english: str | None = None
 
     @property
     def names(self) -> tuple[str, ...]:

@@ -17,6 +17,7 @@ than psychological thrillers. Text search stays pure cosine, as measured.
 """
 
 import math
+from collections import Counter
 from collections.abc import Sequence
 from typing import Any, Literal
 
@@ -26,12 +27,13 @@ from anime_rec.embeddings.base import Embedder
 from anime_rec.log import get_logger
 from anime_rec.recommender.explain import Explainer
 from anime_rec.recommender.filters import SearchFilters, to_qdrant_filter
-from anime_rec.recommender.schemas import AnimeHit, Recommendation
+from anime_rec.recommender.schemas import AnimeHit, Facets, FacetValue, Recommendation
 from anime_rec.recommender.titles import TitleEntry, TitleIndex, franchise_key, same_franchise
 
 log = get_logger(__name__)
 
 OVERFETCH = 4  # candidates per requested result, to survive franchise collapsing
+FACET_FIELDS = ("genres", "themes", "demographics", "type")
 RERANK_POOL = 80  # candidates re-ranked in item-based modes
 TAG_WEIGHT = 0.3
 QUALITY_WEIGHT = 0.05
@@ -99,6 +101,7 @@ def _title_entry(anime_id: int, payload: dict[str, Any]) -> TitleEntry:
         payload["title"],
         int(payload["members"]),
         tuple(a for a in aliases if a and a != payload["title"]),
+        english=payload.get("title_english"),
     )
 
 
@@ -115,28 +118,76 @@ class RecommenderService:
         self._embedder = embedder
         self._explainer = explainer
         self._titles: TitleIndex | None = None
+        self._facets: Facets | None = None
+
+    # --- introspection ----------------------------------------------------------
+
+    @property
+    def collection(self) -> str:
+        return self._collection
+
+    @property
+    def embedding_model(self) -> str:
+        return self._embedder.model
+
+    @property
+    def chat_models(self) -> list[str]:
+        return list(self._explainer.models) if self._explainer else []
+
+    def count(self) -> int:
+        return int(self._client.count(self._collection, exact=False).count)
 
     # --- lookup -----------------------------------------------------------------
 
+    def _load_catalog(self) -> None:
+        """One scroll over Qdrant (the serving source of truth; no parquet needed) builds
+        the title index and the filter facets."""
+        fields = ["title", "members", "title_english", "title_synonyms", *FACET_FIELDS,
+                  "start_year"]  # fmt: skip
+        entries: list[TitleEntry] = []
+        counts: dict[str, Counter[str]] = {f: Counter() for f in FACET_FIELDS}
+        years: list[int] = []
+        offset = None
+        while True:
+            records, offset = self._client.scroll(
+                self._collection, limit=2000, offset=offset, with_payload=fields
+            )
+            for r in records:
+                payload = r.payload or {}
+                entries.append(_title_entry(int(r.id), payload))
+                for field in FACET_FIELDS:
+                    value = payload.get(field)
+                    values = value if isinstance(value, list) else [value]
+                    counts[field].update(str(v) for v in values if v)
+                if isinstance(payload.get("start_year"), int):
+                    years.append(payload["start_year"])
+            if offset is None:
+                break
+        self._titles = TitleIndex(entries)
+        self._facets = Facets(
+            **{
+                f: [FacetValue(value=v, count=n) for v, n in counts[f].most_common() if v]
+                for f in FACET_FIELDS
+            },
+            year_min=min(years, default=None),
+            year_max=max(years, default=None),
+        )
+        log.info("catalog loaded", titles=len(entries))
+
     @property
     def titles(self) -> TitleIndex:
-        """Built lazily from Qdrant, the serving source of truth (no parquet needed)."""
         if self._titles is None:
-            entries: list[TitleEntry] = []
-            offset = None
-            while True:
-                records, offset = self._client.scroll(
-                    self._collection,
-                    limit=2000,
-                    offset=offset,
-                    with_payload=["title", "members", "title_english", "title_synonyms"],
-                )
-                entries.extend(_title_entry(int(r.id), r.payload) for r in records if r.payload)
-                if offset is None:
-                    break
-            self._titles = TitleIndex(entries)
-            log.info("title index loaded", titles=len(entries))
+            self._load_catalog()
+        assert self._titles is not None
         return self._titles
+
+    @property
+    def facets(self) -> Facets:
+        """Available filter values with counts, for building UI pickers."""
+        if self._facets is None:
+            self._load_catalog()
+        assert self._facets is not None
+        return self._facets
 
     def get_many(self, anime_ids: Sequence[int]) -> list[AnimeHit]:
         records = self._client.retrieve(self._collection, list(anime_ids), with_payload=True)
