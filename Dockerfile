@@ -3,7 +3,7 @@
 # Targets:  runtime (default, no dev deps)  |  dev (adds pytest/ruff/mypy, used by `make test`)
 # Build arg TORCH_VARIANT=cpu|gpu selects the PyTorch build (GPU = CUDA 13.0 wheels).
 
-FROM python:3.12-slim AS base
+FROM python:3.14-slim AS base
 COPY --from=ghcr.io/astral-sh/uv:0.8 /uv /uvx /bin/
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
