@@ -141,7 +141,15 @@ def test_chat_endpoint(client: TestClient) -> None:
     assert u["filters"]["include_tags"] == ["Psychological"]
     assert [i["anime_id"] for i in body["items"]] == [6]  # only Monster is psychological
     assert body["explained"] and body["items"][0]["reason"] == "fits"
+    assert body["franchises"] == []  # Death Note has no other entries in the test catalog
 
 
 def test_chat_rejects_empty_message(client: TestClient) -> None:
     assert client.post("/chat", json={"message": "   "}).status_code == 422
+
+
+def test_liked_anime_with_sequels_gets_a_franchise_note(service: RecommenderService) -> None:
+    i = intent(liked=[TitleMention(as_written="Shingeki no Kyojin")])
+    rec, _ = respond(service, "I liked Attack on Titan", intent=i, explain=False)
+    assert [n.seed.anime_id for n in rec.franchises] == [1]
+    assert [e.anime_id for e in rec.franchises[0].entries] == [2, 3]

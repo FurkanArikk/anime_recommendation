@@ -104,4 +104,6 @@ def respond(
         if explain
         else Recommendation(items=hits[:limit])
     )
+    # Sequels/prequels of liked anime are excluded from the results; point to them instead.
+    rec.franchises = service.franchise_notes(seeds[: len(liked)])
     return rec, understood

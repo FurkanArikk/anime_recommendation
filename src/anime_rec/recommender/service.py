@@ -29,13 +29,22 @@ from anime_rec.recommender import chat as chat_turn
 from anime_rec.recommender.explain import Explainer
 from anime_rec.recommender.filters import SearchFilters, to_qdrant_filter
 from anime_rec.recommender.intent import IntentParser
-from anime_rec.recommender.schemas import AnimeHit, Facets, FacetValue, Recommendation
-from anime_rec.recommender.titles import TitleEntry, TitleIndex, franchise_key, same_franchise
+from anime_rec.recommender.schemas import (
+    AnimeHit,
+    AnimeRef,
+    Facets,
+    FacetValue,
+    FranchiseEntry,
+    FranchiseNote,
+    Recommendation,
+)
+from anime_rec.recommender.titles import TitleEntry, TitleIndex, in_franchise
 
 log = get_logger(__name__)
 
 OVERFETCH = 4  # candidates per requested result, to survive franchise collapsing
 FACET_FIELDS = ("genres", "themes", "demographics", "type")
+_TYPE_ORDER = {"TV": 0, "Movie": 1, "ONA": 2, "OVA": 3, "TV Special": 4, "Special": 5}
 RERANK_POOL = 80  # candidates re-ranked in item-based modes
 TAG_WEIGHT = 0.3
 QUALITY_WEIGHT = 0.05
@@ -80,16 +89,16 @@ def hybrid_rerank(
 
 
 def collapse_franchises(
-    hits: Sequence[AnimeHit], limit: int, exclude_keys: set[str] | None = None
+    hits: Sequence[AnimeHit], limit: int, exclude_titles: Sequence[str] = ()
 ) -> list[AnimeHit]:
-    """Keep the best-scoring entry per franchise (hits arrive best-first)."""
-    seen = list(exclude_keys or ())
+    """Keep the best-scoring entry per franchise (hits arrive best-first) and drop the
+    franchises of `exclude_titles` (the user's own inputs)."""
+    seen = list(exclude_titles)
     out: list[AnimeHit] = []
     for hit in hits:
-        key = franchise_key(hit.title)
-        if any(same_franchise(key, k) for k in seen):
+        if any(in_franchise(hit.title, t) for t in seen):
             continue
-        seen.append(key)
+        seen.append(hit.title)
         out.append(hit)
         if len(out) == limit:
             break
@@ -124,6 +133,7 @@ class RecommenderService:
         self._intent_parser = intent_parser
         self._titles: TitleIndex | None = None
         self._facets: Facets | None = None
+        self._franchise_cache: dict[int, list[int]] = {}
 
     # --- introspection ----------------------------------------------------------
 
@@ -206,6 +216,29 @@ class RecommenderService:
         """Most-followed anime (MAL members), e.g. for a landing page."""
         return self.get_many([e.anime_id for e in self.titles.most_popular(limit)])
 
+    def franchise(self, anime: AnimeHit, limit: int = 12) -> FranchiseNote:
+        """Other entries of `anime`'s franchise: TV seasons first (what people usually mean by
+        "the next season"), then movies, ONAs, OVAs and specials, each in release order."""
+        ids = self._franchise_cache.get(anime.anime_id)
+        if ids is None:
+            ids = [
+                e.anime_id
+                for e in self.titles.most_popular(len(self.titles))
+                if e.anime_id != anime.anime_id and in_franchise(anime.title, e.title)
+            ]
+            self._franchise_cache[anime.anime_id] = ids
+        entries = [
+            FranchiseEntry(**h.model_dump(include=set(FranchiseEntry.model_fields)))
+            for h in self.get_many(ids)
+        ]
+        entries.sort(key=lambda e: (_TYPE_ORDER.get(e.type, 9), e.start_year or 9999, e.anime_id))
+        return FranchiseNote(seed=AnimeRef.of(anime), entries=entries[:limit], total=len(entries))
+
+    def franchise_notes(self, seeds: Sequence[AnimeHit], limit: int = 12) -> list[FranchiseNote]:
+        """Notes for the seeds that actually have other entries (at most 3 seeds)."""
+        notes = [self.franchise(s, limit) for s in seeds[:3]]
+        return [n for n in notes if n.entries]
+
     def resolve_title(self, title: str) -> AnimeHit:
         entry = self.titles.resolve(title)
         if entry is None:
@@ -237,7 +270,7 @@ class RecommenderService:
         hits = self._query(anime_id, filters, max(RERANK_POOL, limit * OVERFETCH), [anime_id])
         # Other seasons of the seed are "similar" but useless as recommendations.
         return collapse_franchises(
-            hybrid_rerank(hits, seeds), limit, exclude_keys={franchise_key(seeds[0].title)}
+            hybrid_rerank(hits, seeds), limit, exclude_titles=[seeds[0].title]
         )
 
     def search(
@@ -284,7 +317,7 @@ class RecommenderService:
         return collapse_franchises(
             hybrid_rerank(hits, seeds[: len(liked)]),
             limit,
-            exclude_keys={franchise_key(s.title) for s in seeds},
+            exclude_titles=[s.title for s in seeds],
         )
 
     # --- explanation ------------------------------------------------------------

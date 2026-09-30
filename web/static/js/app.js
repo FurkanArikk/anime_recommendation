@@ -305,11 +305,39 @@ function refChip(a, cls, prefix = "") {
   return h("span", { class: `u-chip ${cls}` }, img(a.image_url, ""), `${prefix}${a.title}`);
 }
 
+async function openDetailById(animeId) {
+  try {
+    openDetail(await api.anime(animeId));
+  } catch (err) {
+    toast(err.message, "err");
+  }
+}
+
+function franchiseNote(note) {
+  const more = note.total - note.entries.length;
+  return h("section", { class: "franchise", "aria-label": `More from ${note.seed.title}` },
+    h("p", { class: "franchise-title" },
+      "📺 ", h("b", { text: note.seed.title }),
+      ` has ${note.total} more ${note.total === 1 ? "entry" : "entries"} in its franchise (TV seasons first). `,
+      h("span", { class: "muted", text: "Kept out of the picks below so you discover something new." })),
+    h("div", { class: "franchise-row" },
+      note.entries.map((e) =>
+        h("button", { class: "f-item", type: "button", title: e.title, onclick: () => openDetailById(e.anime_id) },
+          img(e.image_url, ""),
+          h("span", { class: "f-text" },
+            h("span", { class: "f-title", text: e.title }),
+            h("span", { class: "f-meta", text: [e.type, e.start_year, e.episodes ? `${e.episodes} ep` : null].filter(Boolean).join(" · ") }),
+            h("span", { class: "f-score", text: `★ ${e.score.toFixed(2)}` })))),
+      more > 0 ? h("span", { class: "f-more", text: `+${more} more` }) : null),
+  );
+}
+
 function renderAnswer(container, response) {
   const items = response.items;
   container.replaceChildren(
     h("div", { class: "understood" }, understoodChips(response.understood, response.seeds)),
     response.summary ? h("p", { class: "summary", text: response.summary }) : null,
+    ...(response.franchises || []).map(franchiseNote),
     items.length
       ? h("div", { class: "grid" }, items.map((item, i) => card(item, i, response.explained)))
       : h("div", { class: "error-box", text: "Nothing matched. Try loosening the filters or rephrasing." }),

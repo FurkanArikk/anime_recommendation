@@ -13,7 +13,13 @@ from anime_rec.recommender.service import (
     quality_prior,
     tag_overlap,
 )
-from anime_rec.recommender.titles import TitleEntry, TitleIndex, franchise_key, same_franchise
+from anime_rec.recommender.titles import (
+    TitleEntry,
+    TitleIndex,
+    franchise_key,
+    in_franchise,
+    same_franchise,
+)
 from tests.fakes import CATALOG, KeywordEmbedder, make_service
 
 
@@ -184,3 +190,43 @@ def test_hybrid_rerank_prefers_shared_tags_and_quality() -> None:
 )
 def test_same_franchise(a: str, b: str, same: bool) -> None:
     assert same_franchise(a, b) is same
+
+
+@pytest.mark.parametrize(
+    ("a", "b", "same"),
+    [
+        # Single-word names ending in a symbol are distinctive: all Haikyuu!! seasons match.
+        ("Haikyuu!!", "Haikyuu!! Karasuno Koukou vs. Shiratorizawa Gakuen Koukou", True),
+        ("Haikyuu!! To the Top Part 2", "Haikyuu!! Second Season", True),
+        ("Gintama", "Gintama°", True),
+        ("Death Note", "Death Note: Rewrite", True),
+        ("Kingdom", "Kingdom 6th Season", True),
+        (
+            "Re:Zero kara Hajimeru Isekai Seikatsu",
+            "Re:Zero kara Hajimeru Isekai Seikatsu 2nd Season",
+            True,
+        ),
+        # Plain single words and shared prefixes must not merge unrelated shows.
+        ("Monster", "Monster Musume no Iru Nichijou", False),
+        ("Kingdom", "Kingdom Hearts χ Back Cover", False),
+        ("Re:Zero kara Hajimeru Isekai Seikatsu", "Re:Creators", False),  # was a bug: key 're'
+        ("Death Note", "Death Parade", False),
+        ("Shingeki no Kyojin", "Shingeki no Bahamut: Genesis", False),
+    ],
+)
+def test_in_franchise(a: str, b: str, same: bool) -> None:
+    assert in_franchise(a, b) is same
+    assert in_franchise(b, a) is same  # symmetric
+
+
+def test_franchise_note_lists_other_entries_tv_first(service: RecommenderService) -> None:
+    (seed,) = service.get_many([2])  # Shingeki no Kyojin Season 2
+    note = service.franchise(seed)
+    assert [e.anime_id for e in note.entries] == [1, 3]  # 2013, 2019: seed itself excluded
+    assert note.total == 2 and note.seed.anime_id == 2
+
+
+def test_franchise_notes_skip_standalone_anime(service: RecommenderService) -> None:
+    seeds = service.get_many([5, 1])  # Death Note (standalone here), Shingeki no Kyojin
+    notes = service.franchise_notes(seeds)
+    assert [n.seed.anime_id for n in notes] == [1]

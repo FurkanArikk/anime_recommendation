@@ -146,3 +146,11 @@ def test_popular_and_title_thumbnails(client: TestClient) -> None:
     assert [a["title"] for a in popular] == ["Death Note", "Shingeki no Kyojin"]  # by members
     titles = client.get("/titles", params={"q": "death"}).json()
     assert titles[0]["image_url"].startswith("https://cdn.myanimelist.net/")
+
+
+def test_similar_points_to_the_seeds_other_seasons(client: TestClient) -> None:
+    body = client.post("/similar", json={"anime_id": 1, "limit": 3}).json()
+    assert not {1, 2, 3} & set(ids(body))  # sequels are not recommendations...
+    (note,) = body["franchises"]  # ...but they are surfaced as a note
+    assert note["seed"]["anime_id"] == 1
+    assert [e["anime_id"] for e in note["entries"]] == [2, 3]

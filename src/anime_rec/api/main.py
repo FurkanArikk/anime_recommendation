@@ -60,6 +60,7 @@ def _respond(
     limit: int,
     started: float,
     seeds: list[AnimeHit] | None = None,
+    liked: list[AnimeHit] | None = None,
 ) -> RecommendationResponse:
     if explain:
         rec = service.explain(request_text, hits, top_n=limit)
@@ -71,6 +72,7 @@ def _respond(
         summary=summary,
         explained=explained,
         seeds=[AnimeRef.of(s) for s in seeds or []],
+        franchises=service.franchise_notes(liked or []),
         took_ms=round((time.perf_counter() - started) * 1000),
     )
 
@@ -203,6 +205,7 @@ def create_app(service_factory: ServiceFactory = _default_factory) -> FastAPI:
             limit=body.limit,
             started=started,
             seeds=[seed],
+            liked=[seed],
         )
 
     @app.post("/recommend", tags=["recommend"], summary="Taste profile from liked/disliked")
@@ -228,6 +231,7 @@ def create_app(service_factory: ServiceFactory = _default_factory) -> FastAPI:
             limit=body.limit,
             started=started,
             seeds=seeds,
+            liked=liked,
         )
 
     @app.post("/chat", tags=["recommend"], summary="Chat turn: free text, understood by Gemini")
@@ -252,6 +256,7 @@ def create_app(service_factory: ServiceFactory = _default_factory) -> FastAPI:
             summary=rec.summary,
             explained=rec.explained,
             understood=understood,
+            franchises=rec.franchises,
             took_ms=round((time.perf_counter() - started) * 1000),
         )
 

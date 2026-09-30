@@ -72,7 +72,7 @@ flowchart LR
 | **Ingestion** | Joins the 7 normalized MAL tables into one row per anime. Fixes the data quality issues found during profiling: doubled genre names, placeholder studios, boilerplate synopses, duplicate rows. Validates input and output with pandera and writes parquet atomically. |
 | **Embeddings** | Provider-agnostic: local sentence-transformers (CPU/GPU) or the Gemini API. Content-addressed cache committed per batch, so reruns cost nothing and crashes resume. |
 | **Vector store** | Qdrant, cosine distance, MAL ID as point ID, payload indexes on every filterable field. The collection records its embedding model and refuses to mix models. |
-| **Recommender** | Semantic search, similar-to, and taste profiles via Qdrant's recommend API (liked/disliked plus an optional text modifier). Collapses seasons of the same franchise so one show can't fill a page. Item-based modes re-rank with tag overlap and a quality prior. |
+| **Recommender** | Semantic search, similar-to, and taste profiles via Qdrant's recommend API (liked/disliked plus an optional text modifier). Collapses seasons of the same franchise so one show can't fill a page. The other seasons of an anime you liked are listed separately in a "continue the franchise" note, main TV seasons first. Item-based modes re-rank with tag overlap and a quality prior. |
 | **LLM layer** | Gemini intent parsing and grounded re-rank/explanations, both structured output validated in code. Model fallback chain; thinking disabled on Gemini 2.5 (13.7 s → about 3 s). |
 | **Serving** | FastAPI with typed models and OpenAPI docs, liveness and readiness probes. nginx serves the single-page app and proxies `/api`, with a strict CSP. |
 

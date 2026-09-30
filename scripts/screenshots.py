@@ -68,6 +68,15 @@ def main() -> None:
         page.screenshot(path=OUT / "5-taste.png")
         page.keyboard.press("Escape")
 
+        page.click("#new-chat")
+        page.fill("#message", "I watched Haikyuu and loved it, what else should I watch?")
+        page.keyboard.press("Enter")
+        page.wait_for_selector(".turn-bot .franchise", timeout=60_000)
+        page.wait_for_selector(".turn-bot .card:not(.skeleton)", timeout=60_000)
+        page.wait_for_timeout(1200)
+        wait_for_images(page)
+        page.screenshot(path=OUT / "7-franchise.png")
+
         mobile = browser.new_page(viewport={"width": 390, "height": 844}, device_scale_factor=2)
         mobile.on("pageerror", lambda e: errors.append(f"mobile pageerror: {e}"))
         mobile.goto(BASE, wait_until="networkidle")

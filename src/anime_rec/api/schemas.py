@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from anime_rec.recommender.chat import Understood
 from anime_rec.recommender.filters import SearchFilters
-from anime_rec.recommender.schemas import AnimeHit, AnimeRef
+from anime_rec.recommender.schemas import AnimeHit, AnimeRef, FranchiseNote
 
 MAX_LIMIT = 30
 
@@ -50,6 +50,9 @@ class RecommendationResponse(BaseModel):
     summary: str | None = None
     explained: bool = False
     seeds: list[AnimeRef] = Field(default_factory=list, description="resolved input anime")
+    franchises: list[FranchiseNote] = Field(
+        default_factory=list, description="other seasons/movies of liked anime (not in items)"
+    )
     took_ms: int
 
 
@@ -79,4 +82,5 @@ class ChatResponse(BaseModel):
     summary: str | None = None
     explained: bool = False
     understood: Understood
+    franchises: list[FranchiseNote] = Field(default_factory=list)
     took_ms: int

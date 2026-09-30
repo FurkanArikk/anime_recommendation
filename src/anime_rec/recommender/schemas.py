@@ -66,10 +66,31 @@ class AnimeRef(BaseModel):
         )
 
 
+class FranchiseEntry(BaseModel):
+    anime_id: int
+    title: str
+    title_english: str | None = None
+    image_url: str | None = None
+    type: str
+    start_year: int | None = None
+    episodes: int | None = None
+    score: float
+
+
+class FranchiseNote(BaseModel):
+    """Other entries (seasons, movies, OVAs) of an anime the user liked. Kept out of the
+    recommendations on purpose (they'd crowd out discovery) but surfaced as a note."""
+
+    seed: AnimeRef
+    entries: list[FranchiseEntry]
+    total: int = Field(description="entries in the franchise besides the seed, before limiting")
+
+
 class Recommendation(BaseModel):
     items: list[AnimeHit]
     summary: str | None = None
     explained: bool = Field(default=False, description="True if the LLM re-ranked/explained")
+    franchises: list[FranchiseNote] = Field(default_factory=list)
 
 
 class FacetValue(BaseModel):

@@ -34,12 +34,46 @@ def franchise_key(title: str) -> str:
     'Kingdom 6th Season'                 -> 'kingdom'
     A heuristic: good enough to stop results being five seasons of the same show.
     """
-    base = title.split(":")[0].strip()
+    return normalize(_TRAILING_SYMBOLS.sub("", _peeled(title))) or normalize(title)
+
+
+def _peeled(title: str) -> str:
+    """Title without subtitle and sequel markers, symbols kept: 'Haikyuu!! Second Season'
+    -> 'Haikyuu!!'. Splits on ': ' only, so 'Re:Zero' is not cut down to 'Re'."""
+    base = title.split(": ")[0].strip()
     previous = None
-    while previous != base:  # peel suffixes and symbols: 'Yuru Camp△ Season 2 Specials'
+    while previous != base:  # peel suffixes: 'Yuru Camp△ Season 2 Specials'
         previous = base
-        base = _TRAILING_SYMBOLS.sub("", _SEQUEL_SUFFIX.sub("", base)).strip()
-    return normalize(base) or normalize(title)
+        base = _SEQUEL_SUFFIX.sub("", base).strip()
+    return base or title
+
+
+def _distinctive_bases(title: str) -> set[str]:
+    """Prefixes that safely identify a franchise: multi-word ('Death Note') or ending in a
+    symbol ('Haikyuu!!', 'Gintama°'). A plain single word ('Monster') is too ambiguous:
+    it would swallow 'Monster Musume' and 'Monster Strike'."""
+    peeled = _peeled(title)
+    candidates = {peeled, title.split(" ")[0]}
+    return {b for b in candidates if b and (" " in b or not b[-1].isalnum())}
+
+
+def _extends(title: str, base: str) -> bool:
+    """`title` is `base` followed by a word boundary: 'Haikyuu!! To the Top' / 'Haikyuu!!'."""
+    return title.startswith(base) and (len(title) == len(base) or not title[len(base)].isalnum())
+
+
+def in_franchise(a: str, b: str) -> bool:
+    """Heuristic: are titles `a` and `b` parts of the same franchise (seasons, movies, OVAs)?
+
+    MAL titles carry no relation data in this dataset, so this combines normalized keys
+    with distinctive-prefix matching. Tested on known hard cases (Haikyuu!!, Re:Zero vs
+    Re:Creators, Monster vs Monster Musume, Kingdom vs Kingdom Hearts).
+    """
+    if same_franchise(franchise_key(a), franchise_key(b)):
+        return True
+    return any(_extends(b, base) for base in _distinctive_bases(a)) or any(
+        _extends(a, base) for base in _distinctive_bases(b)
+    )
 
 
 @dataclass(frozen=True)
