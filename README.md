@@ -1,7 +1,7 @@
 # 🌸 AniRec: chat-based anime recommendations
 
 [![CI](https://github.com/FurkanArikk/anime_recommendation/actions/workflows/ci.yml/badge.svg)](https://github.com/FurkanArikk/anime_recommendation/actions/workflows/ci.yml)
-![Python](https://img.shields.io/badge/python-3.12-blue)
+![Python](https://img.shields.io/badge/python-3.14-blue)
 ![Coverage](https://img.shields.io/badge/coverage-86%25-brightgreen)
 ![License](https://img.shields.io/badge/license-MIT-lightgrey)
 

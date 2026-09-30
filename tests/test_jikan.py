@@ -126,7 +126,7 @@ def test_merge_fills_genres_and_keeps_schema(raw_tables: RawTables, tmp_path: Pa
     assert rows.loc[21, "genres"] == ["Action", "Adventure", "Slice of Life"]  # union
     assert rows.loc[99, "genres"] == ["Mystery"]
     assert rows.loc[99, "title_english"] == "Mystery Film"
-    assert rows.loc[1535, "title_english"] is None  # not enriched: columns still present
+    assert pd.isna(rows.loc[1535, "title_english"])  # not enriched: columns still present
     assert rows.loc[1535, "title_synonyms"] == []
     assert report.counts["main_genre_filled_by_jikan"] == 1
 

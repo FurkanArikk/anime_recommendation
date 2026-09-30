@@ -106,7 +106,7 @@ def test_row_level_cleaning(clean: pd.DataFrame) -> None:
     assert one_piece["synopsis"] == "Luffy sails the Grand Line, searching for treasure."
 
     # Placeholder synopsis -> missing, but the anime is kept.
-    assert mystery["synopsis"] is None and not mystery["has_synopsis"]
+    assert pd.isna(mystery["synopsis"]) and not mystery["has_synopsis"]  # None or NaN (pandas 3)
     assert pd.isna(mystery["start_year"])
     assert mystery["genres"] == [] and mystery["studios"] == []
 

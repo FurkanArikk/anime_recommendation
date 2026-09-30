@@ -9,7 +9,7 @@ keywords = ["recommender-system", "rag", "vector-search", "qdrant", "embeddings"
 requires-python = ">=3.11"
 dependencies = [
     # data
-    "pandas>=2.2,<4",  # pandas 3 changes default string dtype; revisit deliberately
+    "pandas>=3.0,<4",  # 3.x: missing strings are NaN, not None (handled in to_payload)
     "pyarrow>=17.0",
     "pandera>=0.24",
     # config / validation / logging
@@ -85,7 +85,7 @@ src = ["src", "tests"]
 select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF", "N"]
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.14"
 mypy_path = "src"
 strict = true
 ignore_missing_imports = true
